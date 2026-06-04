@@ -1820,7 +1820,7 @@ function renderHistoryModalScorecard() {
     // Populate batting list
     const battingList = document.getElementById('history-batting-list');
     battingList.innerHTML = `
-        <div class="scorecard-row batting-grid header" style="grid-template-columns: 160px repeat(5, 1fr); padding: 10px 0; font-size: 0.88rem;">
+        <div class="scorecard-row batting-grid header">
             <span>Batter</span>
             <span>R</span>
             <span>B</span>
@@ -1833,22 +1833,19 @@ function renderHistoryModalScorecard() {
     inn.battingStats.forEach(b => {
         const row = document.createElement('div');
         row.className = "scorecard-row batting-grid";
-        row.style.gridTemplateColumns = "160px repeat(5, 1fr)";
-        row.style.padding = "10px 12px";
-        row.style.fontSize = "1.05rem";
         
         const sr = b.balls > 0 ? ((b.runs / b.balls) * 100).toFixed(1) : "0.0";
         
         let statusBadgeHtml = "";
         if (b.active) {
-            statusBadgeHtml = `<span class="scorecard-status-badge status-notout" style="font-size: 0.7rem; padding: 2px 6px;">not out</span>`;
+            statusBadgeHtml = `<span class="scorecard-status-badge status-notout">not out</span>`;
         } else {
-            statusBadgeHtml = `<span class="scorecard-dismissal-text" style="font-size: 0.8rem; color: var(--text-muted); font-style: italic; margin-left: 8px;">${b.dismissal || 'OUT'}</span>`;
+            statusBadgeHtml = `<span class="scorecard-dismissal-text">${b.dismissal || 'OUT'}</span>`;
         }
         
         row.innerHTML = `
-            <div class="scorecard-name-wrapper" style="font-size: 0.95rem;">
-                <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 140px;">${b.name}</span>
+            <div class="scorecard-name-wrapper">
+                <span class="scorecard-player-name-text">${b.name}</span>
                 ${statusBadgeHtml}
             </div>
             <span>${b.runs}</span>
@@ -1863,7 +1860,7 @@ function renderHistoryModalScorecard() {
     // Populate bowling list
     const bowlingList = document.getElementById('history-bowling-list');
     bowlingList.innerHTML = `
-        <div class="scorecard-row bowling-grid header" style="grid-template-columns: 160px repeat(4, 1fr); padding: 10px 0; font-size: 0.88rem;">
+        <div class="scorecard-row bowling-grid header">
             <span>Bowler</span>
             <span>O</span>
             <span>R</span>
@@ -1875,9 +1872,6 @@ function renderHistoryModalScorecard() {
     inn.bowlingStats.forEach(bowler => {
         const row = document.createElement('div');
         row.className = "scorecard-row bowling-grid";
-        row.style.gridTemplateColumns = "160px repeat(4, 1fr)";
-        row.style.padding = "10px 12px";
-        row.style.fontSize = "1.05rem";
         
         let oWhole = Math.floor(bowler.oversBalls / 6);
         let oLeft = bowler.oversBalls % 6;
@@ -1889,9 +1883,9 @@ function renderHistoryModalScorecard() {
         }
         
         row.innerHTML = `
-            <div class="scorecard-name-wrapper" style="font-size: 0.95rem;">
-                <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 140px;">${bowler.name}</span>
-                ${bowler.active ? '<span class="scorecard-status-badge status-notout" style="font-size: 0.7rem; padding: 2px 6px;">active</span>' : ''}
+            <div class="scorecard-name-wrapper">
+                <span class="scorecard-player-name-text">${bowler.name}</span>
+                ${bowler.active ? '<span class="scorecard-status-badge status-notout">active</span>' : ''}
             </div>
             <span>${displayOvers}</span>
             <span>${bowler.runs}</span>

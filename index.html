@@ -89,24 +89,6 @@
             </div>
             </div>
 
-        <!-- Cloud & Data Safety Card on Setup Page -->
-        <div class="setup-card animate-pop data-safety-setup-card" style="max-width: 960px; margin-top: 0; padding: 24px 32px;">
-            <div class="setup-header" style="margin-bottom: 20px; display: flex; flex-direction: column; align-items: center; text-align: center;">
-                <i class="fa-solid fa-server setup-trophy-icon" style="font-size: 2.2rem; color: var(--color-blue); margin-bottom: 8px;"></i>
-                <h3 style="font-family: var(--font-heading); font-size: 1.6rem; font-weight: 800; color: var(--text-main); margin: 0;">Cloud & Data Safety</h3>
-                <p style="font-size: 0.85rem; color: var(--text-muted); margin-top: 4px;">Backup or restore your scoreboard records offline</p>
-            </div>
-            
-            <div style="display: flex; gap: 16px; justify-content: center; flex-wrap: wrap; width: 100%;">
-                <button class="btn btn-secondary" onclick="exportDataBackup()" style="flex: 1; min-width: 220px; justify-content: center; font-weight: 700; padding: 12px 18px;">
-                    <i class="fa-solid fa-cloud-arrow-down" style="color: var(--color-blue); margin-right: 8px;"></i> Backup History (.json)
-                </button>
-                <button class="btn btn-secondary" onclick="triggerImportBackup()" style="flex: 1; min-width: 220px; justify-content: center; font-weight: 700; padding: 12px 18px; border-style: dashed !important;">
-                    <i class="fa-solid fa-cloud-arrow-up" style="color: var(--color-gold); margin-right: 8px;"></i> Restore History (.json)
-                </button>
-                <input type="file" id="backup-file-input" accept=".json" style="display: none;" onchange="importDataBackup(event)">
-            </div>
-        </div>
 
         <!-- Saved Matches History Card on Setup Page -->
         <div class="setup-card animate-pop history-setup-card" style="max-width: 960px; margin-top: 0; padding: 24px 32px;">
@@ -471,13 +453,10 @@
     <!-- Saved Match Full Details Right Sidebar Drawer -->
     <div id="history-details-overlay" class="history-drawer-overlay" onclick="closeHistoryDetailsModal()"></div>
     <div id="history-details-modal" class="history-details-drawer">
-        <div class="drawer-header" style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 16px; margin-bottom: 16px;">
+        <div class="drawer-header" style="display: flex; justify-content: center; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 16px; margin-bottom: 16px;">
             <h2 id="history-modal-title" style="margin: 0; font-family: var(--font-heading); font-size: 1.3rem; font-weight: 800; display: flex; align-items: center; gap: 8px;">
                 <i class="fa-solid fa-clipboard-list" style="color: var(--color-gold);"></i> Scorecard Details
             </h2>
-            <button class="btn-sidebar-close" onclick="closeHistoryDetailsModal()" style="display: inline-flex !important; font-size: 1.4rem; color: var(--text-muted); cursor: pointer;" aria-label="Close Scorecard Drawer">
-                <i class="fa-solid fa-xmark"></i>
-            </button>
         </div>
         
         <!-- History view selectors -->
