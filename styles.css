@@ -1,7 +1,6 @@
 /* Custom Palette Variables - Deep stadium dark mode */
 :root {
     --bg-main: #090c15;
-    --bg-sidebar: #06080e;
     --bg-card: rgba(17, 22, 37, 0.7);
     --bg-card-solid: #111625;
     
@@ -36,7 +35,6 @@
 /* Light Mode Overrides */
 [data-theme="light"] {
     --bg-main: #f0f4f8;
-    --bg-sidebar: #e2e8f0;
     --bg-card: rgba(255, 255, 255, 0.85);
     --bg-card-solid: #ffffff;
     
@@ -60,12 +58,16 @@
     padding: 0;
 }
 
+html, body {
+    overflow-x: hidden;
+    width: 100%;
+}
+
 body {
     background-color: var(--bg-main);
     color: var(--text-main);
     font-family: var(--font-body);
     min-height: 100vh;
-    overflow-x: hidden;
     position: relative;
     transition: background-color 0.3s ease;
 }
@@ -135,15 +137,6 @@ body {
     letter-spacing: 1px;
 }
 
-.sidebar-section h3 {
-    font-family: var(--font-heading);
-    font-size: 0.9rem;
-    color: var(--text-muted);
-    text-transform: uppercase;
-    letter-spacing: 1px;
-    margin-bottom: 16px;
-    font-weight: 700;
-}
 
 .setting-card {
     background-color: var(--bg-card);
@@ -199,30 +192,6 @@ body {
     color: var(--text-muted);
 }
 
-.match-history-section {
-    flex-grow: 1;
-    display: flex;
-    flex-direction: column;
-}
-
-.history-list {
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-    overflow-y: auto;
-    max-height: calc(100vh - 300px);
-    flex-grow: 1;
-    padding-right: 4px;
-}
-
-.history-list::-webkit-scrollbar {
-    width: 4px;
-}
-
-.history-list::-webkit-scrollbar-thumb {
-    background-color: var(--border-color);
-    border-radius: 2px;
-}
 
 .history-card-item {
     background-color: rgba(255, 255, 255, 0.02);
@@ -262,13 +231,6 @@ body {
     padding: 20px 0;
 }
 
-.sidebar-footer {
-    border-top: 1px solid var(--border-color);
-    padding-top: 20px;
-    font-size: 0.75rem;
-    color: var(--text-muted);
-    text-align: center;
-}
 
 /* Main Dashboard Styling */
 .main-dashboard {
@@ -1009,21 +971,27 @@ body {
 }
 
 .btn-roster-delete {
-    background: none;
-    border: none;
+    background: rgba(244, 63, 94, 0.05);
+    border: 1px solid rgba(244, 63, 94, 0.15);
     color: var(--color-danger);
     cursor: pointer;
-    font-size: 1.1rem;
+    font-size: 0.95rem;
     display: flex;
     align-items: center;
     justify-content: center;
+    width: 28px;
+    height: 28px;
+    border-radius: var(--radius-sm);
     transition: var(--transition);
-    opacity: 0.6;
+    opacity: 0.85;
 }
 
 .btn-roster-delete:hover {
+    background: var(--color-danger-glow);
+    border-color: var(--color-danger);
+    color: #ffffff;
     opacity: 1;
-    transform: scale(1.15);
+    transform: translateY(-1px) scale(1.05);
 }
 
 .roster-row:focus-within {
@@ -1173,6 +1141,10 @@ body {
     margin-top: 16px;
 }
 
+.scorecard-column {
+    min-width: 0;
+}
+
 .scorecard-col-title {
     font-family: var(--font-heading);
     font-size: 1rem;
@@ -1278,22 +1250,6 @@ body {
         grid-template-columns: 1fr;
     }
     
-    /* Top compact sidebar on mobile */
-    .sidebar {
-        padding: 20px;
-        gap: 20px;
-        border-bottom: 1px solid var(--border-color);
-        border-right: none;
-    }
-    
-    .sidebar-section h3 {
-        margin-bottom: 10px;
-        font-size: 0.8rem;
-    }
-    
-    .history-list {
-        max-height: 120px; /* smaller panel for logs to avoid scroll clutter */
-    }
 
     .main-dashboard {
         padding: 16px;
@@ -1424,7 +1380,9 @@ body {
         font-size: 0.75rem;
     }
     .btn-roster-delete {
-        font-size: 0.85rem;
+        width: 24px;
+        height: 24px;
+        font-size: 0.8rem;
     }
     .roster-number-input {
         width: 34px;
@@ -1444,6 +1402,7 @@ body {
         gap: 16px;
     }
     .scorecard-table {
+        max-width: 100%;
         overflow-x: auto;
         -webkit-overflow-scrolling: touch;
         padding-bottom: 4px;
@@ -1454,18 +1413,18 @@ body {
         display: none !important;
     }
     .scorecard-row.batting-grid {
-        grid-template-columns: 140px repeat(5, 45px);
-        width: max-content;
+        grid-template-columns: 1fr 34px 34px 30px 30px 48px;
+        width: 100%;
         gap: 4px;
-        padding: 8px 10px;
-        font-size: 0.9rem;
+        padding: 8px 6px;
+        font-size: 0.82rem;
     }
     .scorecard-row.bowling-grid {
-        grid-template-columns: 140px repeat(4, 50px);
-        width: max-content;
+        grid-template-columns: 1fr 36px 34px 34px 48px;
+        width: 100%;
         gap: 4px;
-        padding: 8px 10px;
-        font-size: 0.9rem;
+        padding: 8px 6px;
+        font-size: 0.82rem;
     }
     
     .tab-btn {
@@ -1487,35 +1446,6 @@ body {
     transform: translateY(-2px);
 }
 
-.history-modal-meta-row {
-    font-size: 0.9rem;
-}
-
-.history-modal-extras-box {
-    background: rgba(255, 255, 255, 0.02);
-    border: 1px solid var(--border-color);
-}
-
-/* Saved Match Details Sidebar Drawer styling - transformed to centered popup modal */
-.history-drawer-overlay {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100vw;
-    height: 100vh;
-    background-color: rgba(0, 0, 0, 0.75);
-    backdrop-filter: blur(8px);
-    -webkit-backdrop-filter: blur(8px);
-    z-index: 1020;
-    opacity: 0;
-    pointer-events: none;
-    transition: opacity 0.3s ease;
-}
-
-.history-drawer-overlay.open {
-    opacity: 1;
-    pointer-events: auto;
-}
 
 /* Saved Matches History Grid on Setup screen */
 .history-setup-grid {
@@ -1536,244 +1466,6 @@ body {
     border-radius: 2px;
 }
 
-.history-details-drawer {
-    position: fixed;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%) scale(0.9);
-    width: 90%;
-    max-width: 620px;
-    max-height: 80vh;
-    background-color: var(--bg-card-solid);
-    border: 1px solid var(--border-color);
-    border-radius: var(--radius-lg);
-    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.85);
-    z-index: 1025;
-    opacity: 0;
-    pointer-events: none;
-    transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.3s ease;
-    padding: 20px 18px;
-    display: flex;
-    flex-direction: column;
-    overflow-y: auto;
-    -ms-overflow-style: none !important;
-    scrollbar-width: none !important;
-}
-
-.history-details-drawer::-webkit-scrollbar {
-    display: none !important;
-}
-
-.history-details-drawer.open {
-    opacity: 1;
-    pointer-events: auto;
-    transform: translate(-50%, -50%) scale(1);
-}
-
-.history-scorecard-grid {
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-    margin-top: 6px;
-}
-
-/* Default Desktop styles for history scorecard elements */
-.history-details-drawer .scorecard-row.batting-grid {
-    grid-template-columns: 160px repeat(5, 1fr);
-    padding: 10px 12px;
-    font-size: 1.05rem;
-}
-
-.history-details-drawer .scorecard-row.batting-grid.header {
-    padding: 10px 0;
-    font-size: 0.88rem;
-}
-
-.history-details-drawer .scorecard-row.bowling-grid {
-    grid-template-columns: 160px repeat(4, 1fr);
-    padding: 10px 12px;
-    font-size: 1.05rem;
-}
-
-.history-details-drawer .scorecard-row.bowling-grid.header {
-    padding: 10px 0;
-    font-size: 0.88rem;
-}
-
-.history-details-drawer .scorecard-name-wrapper {
-    font-size: 0.95rem;
-    display: flex;
-    align-items: center;
-    gap: 6px;
-}
-
-.history-details-drawer .scorecard-player-name-text {
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    max-width: 140px;
-    display: inline-block;
-}
-
-.history-details-drawer .scorecard-dismissal-text {
-    font-size: 0.8rem;
-    color: var(--text-muted);
-    font-style: italic;
-    margin-left: 8px;
-}
-
-.history-details-drawer .scorecard-status-badge {
-    font-size: 0.7rem;
-    padding: 2px 6px;
-}
-
-.history-details-drawer .btn-sidebar-close {
-    display: inline-flex !important;
-    align-items: center;
-    justify-content: center;
-    background: none;
-    border: none;
-    color: var(--text-muted);
-    font-size: 1.4rem;
-    cursor: pointer;
-    padding: 6px;
-    transition: var(--transition);
-    border-radius: 50%;
-    width: 36px;
-    height: 36px;
-}
-
-.history-details-drawer .btn-sidebar-close:hover {
-    color: var(--color-danger);
-    background: var(--color-danger-glow);
-}
-
-@media (max-width: 640px) {
-    .history-details-drawer {
-        width: 95% !important;
-        max-height: 90vh !important;
-        border-radius: var(--radius-md) !important;
-        padding: 10px 8px !important;
-    }
-    
-    .history-details-drawer .scorecard-row.batting-grid {
-        grid-template-columns: 2.2fr repeat(5, 1fr) !important;
-        width: 100% !important;
-        padding: 4px 2px !important;
-        font-size: 0.65rem !important;
-    }
-    
-    .history-details-drawer .scorecard-row.bowling-grid {
-        grid-template-columns: 2.2fr repeat(4, 1fr) !important;
-        width: 100% !important;
-        padding: 4px 2px !important;
-        font-size: 0.65rem !important;
-    }
-    
-    .history-details-drawer .scorecard-table {
-        overflow-x: hidden !important;
-        padding-bottom: 0 !important;
-    }
-
-    /* Stack player names and dismissal badges vertically on mobile to save space */
-    .history-details-drawer .scorecard-name-wrapper {
-        flex-direction: column !important;
-        align-items: flex-start !important;
-        gap: 1px !important;
-        min-width: 0 !important;
-        overflow: hidden !important;
-        font-size: 0.65rem !important;
-    }
-    .history-details-drawer .scorecard-name-wrapper span {
-        max-width: 100% !important;
-        white-space: nowrap !important;
-        overflow: hidden !important;
-        text-overflow: ellipsis !important;
-    }
-    .history-details-drawer .scorecard-player-name-text {
-        font-size: 0.65rem !important;
-    }
-    .history-details-drawer .scorecard-dismissal-text {
-        margin-left: 0 !important;
-        font-size: 0.58rem !important;
-        line-height: 1 !important;
-    }
-    .history-details-drawer .scorecard-status-badge {
-        font-size: 0.52rem !important;
-        padding: 1px 3px !important;
-        line-height: 1 !important;
-    }
-    
-    /* Compact inner items inside mobile details modal */
-    .history-details-drawer .awards-card {
-        margin-top: 6px !important;
-        padding: 6px 8px !important;
-        font-size: 0.68rem !important;
-    }
-
-    .history-details-drawer .award-row {
-        padding: 4px 0 !important;
-        flex-direction: column !important;
-        align-items: flex-start !important;
-        gap: 2px !important;
-    }
-
-    .history-details-drawer .award-winner-details {
-        text-align: left !important;
-        width: 100% !important;
-        padding-left: 20px !important;
-    }
-
-    .history-details-drawer .award-winner-name {
-        font-size: 0.72rem !important;
-    }
-
-    .history-details-drawer .award-winner-stats {
-        font-size: 0.62rem !important;
-    }
-
-    .history-details-drawer .history-modal-extras-box {
-        margin-top: 6px !important;
-        padding: 6px 8px !important;
-        flex-direction: column !important;
-        align-items: center !important;
-        text-align: center !important;
-        gap: 4px !important;
-    }
-    .history-details-drawer .history-modal-extras-box div {
-        text-align: center !important;
-        font-size: 0.68rem !important;
-    }
-
-    .history-details-drawer .drawer-header {
-        padding-bottom: 4px !important;
-        margin-bottom: 4px !important;
-    }
-    .history-details-drawer .drawer-header h2 {
-        font-size: 1.15rem !important;
-    }
-    
-    .history-details-drawer .history-modal-meta-row {
-        margin-bottom: 6px !important;
-        padding-bottom: 4px !important;
-        font-size: 0.72rem !important;
-    }
-    
-    .history-details-drawer .modal-buttons {
-        margin-top: 8px !important;
-        margin-bottom: 2px !important;
-    }
-    .history-details-drawer .modal-buttons button {
-        padding: 8px 12px !important;
-        font-size: 0.76rem !important;
-        border-radius: var(--radius-sm) !important;
-    }
-    
-    .history-details-drawer .tab-btn {
-        padding: 4px 8px !important;
-        font-size: 0.62rem !important;
-    }
-}
 
 @media (max-width: 768px) {
     .current-bowler-spell-highlight {
@@ -1845,11 +1537,19 @@ body {
     width: 100%;
     min-height: 100vh;
     display: flex;
+    flex-direction: column;
     justify-content: center;
     align-items: center;
-    padding: 30px 16px;
+    gap: 30px;
+    padding: 40px 16px;
     z-index: 100;
     position: relative;
+}
+
+.history-setup-card {
+    max-width: 960px;
+    margin-top: 0;
+    padding: 24px 32px;
 }
 
 .setup-card {
@@ -1951,6 +1651,7 @@ body {
     border-radius: var(--radius-sm);
     padding: 6px 10px;
     transition: var(--transition);
+    animation: setupRowSlideIn 0.25s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
 }
 
 .setup-player-row:focus-within {
@@ -1961,6 +1662,7 @@ body {
 .setup-player-row .setup-select {
     padding: 4px 6px;
     font-size: 0.82rem;
+    width: 100%;
 }
 
 .setup-input, .setup-select {
@@ -2021,9 +1723,14 @@ body {
 
 /* Mobile Setup Screen Responsive styling */
 @media (max-width: 768px) {
+    .setup-container {
+        padding: 16px 8px;
+        gap: 16px;
+    }
+    
     .setup-squads-row {
         grid-template-columns: 1fr;
-        gap: 16px;
+        gap: 12px;
     }
     
     .settings-grid {
@@ -2032,15 +1739,28 @@ body {
     }
     
     .setup-card {
-        padding: 20px;
+        padding: 16px 12px;
+    }
+    
+    .history-setup-card {
+        padding: 16px 12px;
+        margin-top: 0;
+    }
+    
+    .squad-setup-card {
+        padding: 12px;
+    }
+    
+    .toss-settings-card {
+        padding: 12px;
     }
     
     .setup-header h2 {
-        font-size: 1.6rem;
+        font-size: 1.5rem;
     }
     
     .setup-player-row {
-        grid-template-columns: 24px 1fr 95px 30px;
+        grid-template-columns: 20px 1fr 85px 28px;
         gap: 6px;
         padding: 4px 6px;
     }
@@ -2236,56 +1956,6 @@ body {
     grid-template-columns: repeat(2, 1fr) !important;
 }
 
-/* Hidden by default on desktop */
-.btn-sidebar-toggle,
-.btn-sidebar-close {
-    display: none;
-}
-
-@media (max-width: 1024px) {
-    /* Reveal and style Hamburger trigger button */
-    .btn-sidebar-toggle {
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        width: 38px;
-        height: 38px;
-        background: rgba(255, 255, 255, 0.05);
-        border: 1px solid var(--border-color);
-        border-radius: var(--radius-sm);
-        color: var(--text-main);
-        cursor: pointer;
-        transition: var(--transition);
-    }
-    
-    .btn-sidebar-toggle:hover {
-        background: rgba(255, 255, 255, 0.1);
-        border-color: var(--border-hover);
-        transform: translateY(-1px);
-    }
-    
-    /* Reveal Close button at top of mobile sidebar brand card */
-    .btn-sidebar-close {
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        background: none;
-        border: none;
-        color: var(--text-muted);
-        font-size: 1.3rem;
-        cursor: pointer;
-        padding: 6px;
-        transition: var(--transition);
-        border-radius: 50%;
-        width: 32px;
-        height: 32px;
-    }
-    
-    .btn-sidebar-close:hover {
-        color: var(--color-danger);
-        background: var(--color-danger-glow);
-    }
-}
 
 /* Small smartphone viewport optimization (<= 480px portrait) */
 @media (max-width: 480px) {
@@ -2358,5 +2028,71 @@ body {
     .modal-buttons button {
         width: 100%;
         flex-grow: 1;
+    }
+}
+
+/* Premium Transitions & Roster Add/Remove Animations */
+.btn-add-player {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    width: 100%;
+    font-weight: 700;
+    margin-top: 10px;
+    padding: 8px 16px;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    font-size: 0.85rem;
+    transition: var(--transition);
+}
+
+.btn-add-team-a {
+    background: rgba(59, 130, 246, 0.06);
+    border: 1px dashed rgba(59, 130, 246, 0.35);
+    color: var(--color-blue);
+}
+
+.btn-add-team-a:hover {
+    background: rgba(59, 130, 246, 0.15);
+    border-color: var(--color-blue);
+    transform: translateY(-1px);
+}
+
+.btn-add-team-b {
+    background: rgba(16, 185, 129, 0.06);
+    border: 1px dashed rgba(16, 185, 129, 0.35);
+    color: var(--color-green);
+}
+
+.btn-add-team-b:hover {
+    background: rgba(16, 185, 129, 0.15);
+    border-color: var(--color-green);
+    transform: translateY(-1px);
+}
+
+@keyframes setupRowSlideIn {
+    from {
+        opacity: 0;
+        transform: translateY(8px) scale(0.98);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+@keyframes setupRowFadeOut {
+    from {
+        opacity: 1;
+        transform: scale(1) translateY(0);
+    }
+    to {
+        opacity: 0;
+        transform: scale(0.95) translateY(-8px);
+        max-height: 0;
+        padding: 0;
+        margin: 0;
+        border-color: transparent;
     }
 }

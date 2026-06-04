@@ -82,9 +82,6 @@ let tempWicketStriker = null;
 let tempWicketBowler = null;
 let tempWicketSlot = null;
 
-// Temporary variable holding the match currently loaded in the history detail modal
-let loadedHistoryMatch = null;
-let loadedHistoryActiveTab = 1;
 
 // ==========================================================
 // STATE CONTROLLER ACCESSORS
@@ -1248,8 +1245,8 @@ function renderInningsScorecard() {
         battingList.innerHTML = `
             <div class="scorecard-row batting-grid header">
                 <span>Batter</span>
-                <span>Runs</span>
-                <span>Balls</span>
+                <span>R</span>
+                <span>B</span>
                 <span>4s</span>
                 <span>6s</span>
                 <span>SR</span>
@@ -1293,9 +1290,9 @@ function renderInningsScorecard() {
         bowlingList.innerHTML = `
             <div class="scorecard-row bowling-grid header">
                 <span>Bowler</span>
-                <span>Overs</span>
-                <span>Runs</span>
-                <span>Wkts</span>
+                <span>O</span>
+                <span>R</span>
+                <span>W</span>
                 <span>Econ</span>
             </div>
         `;
@@ -1683,7 +1680,7 @@ function loadSavedMatches() {
             const item = document.createElement('div');
             item.className = "history-card-item";
             item.style.cursor = "pointer";
-            item.onclick = () => openHistoryDetailsModal(match.id);
+            item.onclick = () => openHistorySummaryModal(match.id);
             
             // Migrate old match state data format to 2-innings format to prevent page load crashes!
             const s = migrateMatchState(match.state);
@@ -1692,6 +1689,34 @@ function loadSavedMatches() {
             
             // Check if second innings was started
             const hasSecondInnings = s.currentInnings === 2 || (s.innings2 && (s.innings2.runs > 0 || s.innings2.wickets > 0 || s.innings2.totalValidBalls > 0));
+            
+            // Generate dynamic match summary
+            let summaryText = "";
+            if (s.target === null) {
+                summaryText = "Innings 1 in progress";
+            } else {
+                const target = s.target;
+                const runs2 = s.innings2 ? s.innings2.runs : 0;
+                const wickets2 = s.innings2 ? s.innings2.wickets : 0;
+                
+                if (s.innings2Completed || s.matchOver) {
+                    if (runs2 >= target) {
+                        summaryText = `${team2} won by ${10 - wickets2} wickets`;
+                    } else if (runs2 === target - 1 && s.innings2Completed) {
+                        summaryText = "Match Tied";
+                    } else {
+                        summaryText = `${team1} won by ${target - 1 - runs2} runs`;
+                    }
+                } else {
+                    if (!hasSecondInnings) {
+                        summaryText = `Target set: ${target} runs`;
+                    } else {
+                        const oversLimit = s.maxOvers || 6;
+                        const ballsRemaining = (oversLimit * 6) - ((s.innings2.overs || 0) * 6 + (s.innings2.ballsInOver || 0));
+                        summaryText = `${team2} needs ${target - runs2} runs off ${ballsRemaining} balls`;
+                    }
+                }
+            }
             
             item.innerHTML = `
                 <div class="history-card-title" style="display: flex; justify-content: space-between; font-weight: 700; font-size: 0.88rem; margin-bottom: 6px;">
@@ -1709,13 +1734,15 @@ function loadSavedMatches() {
                     </div>
                     ` : ''}
                 </div>
+                <div class="history-card-summary" style="font-size: 0.74rem; font-weight: 700; color: var(--color-gold); background: var(--color-gold-glow); border: 1px solid rgba(251, 191, 36, 0.2); padding: 4px 8px; border-radius: var(--radius-sm); margin-bottom: 8px; text-align: center; display: flex; align-items: center; justify-content: center; gap: 6px;">
+                    <i class="fa-solid fa-trophy" style="font-size: 0.75rem;"></i> ${summaryText}
+                </div>
                 <div class="history-card-date" style="display: flex; justify-content: space-between; align-items: center; border-top: 1px dashed rgba(255,255,255,0.04); padding-top: 8px; font-size: 0.72rem;">
                     <span>${match.date}</span>
                     <div style="display: flex; gap: 10px; align-items: center;">
                         <button class="btn-history-delete" onclick="event.stopPropagation(); deleteMatchFromHistory(${match.id});" style="background: none; border: none; color: var(--color-danger); opacity: 0.65; cursor: pointer; padding: 2px; transition: var(--transition);" onmouseover="this.style.opacity='1'; this.style.transform='scale(1.15)';" onmouseout="this.style.opacity='0.65'; this.style.transform='scale(1)';" title="Delete Match Record">
-                            <i class="fa-solid fa-trash-can"></i>
+                            <i class="fa-solid fa-trash-can"></i> Delete
                         </button>
-                        <span style="color: var(--color-gold); font-weight: 700; display: flex; align-items: center; gap: 4px;"><i class="fa-solid fa-eye"></i> View</span>
                     </div>
                 </div>
             `;
@@ -1734,229 +1761,256 @@ function deleteMatchFromHistory(id) {
     }
 }
 
-function openHistoryDetailsModal(id) {
+function openHistorySummaryModal(id) {
     let savedMatches = JSON.parse(localStorage.getItem('silent_killer_matches') || '[]');
     let match = savedMatches.find(m => m.id === id);
     if (!match) return;
     
-    // Migrate loaded match state data format
-    match.state = migrateMatchState(match.state);
+    const s = migrateMatchState(match.state);
+    const team1 = s.team1Name || "Team A";
+    const team2 = s.team2Name || "Team B";
+    const hasSecondInnings = s.currentInnings === 2 || (s.innings2 && (s.innings2.runs > 0 || s.innings2.wickets > 0 || s.innings2.totalValidBalls > 0));
     
-    // Store globally inside details modal tracker
-    loadedHistoryMatch = match;
-    loadedHistoryActiveTab = 1;
-    
-    // Build tabs inside detail modal
-    const tabUs = document.getElementById('btn-history-tab-1');
-    const tabThem = document.getElementById('btn-history-tab-2');
-    
-    tabUs.className = "tab-btn active";
-    tabThem.className = "tab-btn";
-    
-    // Set dynamic custom team tab texts
-    tabUs.textContent = `${match.state.team1Name || "Team A"} Innings`;
-    tabThem.textContent = `${match.state.team2Name || "Team B"} Innings`;
-    
-    renderHistoryModalScorecard();
-    
-    const modal = document.getElementById('history-details-modal');
-    if (modal) modal.classList.add('open');
-    const overlay = document.getElementById('history-details-overlay');
-    if (overlay) overlay.classList.add('open');
-}
-
-function toggleHistoryModalTab(tabIndex) {
-    loadedHistoryActiveTab = tabIndex;
-    
-    const tabUs = document.getElementById('btn-history-tab-1');
-    const tabThem = document.getElementById('btn-history-tab-2');
-    
-    if (tabIndex === 1) {
-        tabUs.classList.add('active');
-        tabThem.classList.remove('active');
-    } else {
-        tabThem.classList.add('active');
-        tabUs.classList.remove('active');
-    }
-    
-    renderHistoryModalScorecard();
-}
-
-function renderHistoryModalScorecard() {
-    if (!loadedHistoryMatch) return;
-    
-    const s = loadedHistoryMatch.state;
-    const inn = loadedHistoryActiveTab === 1 ? s.innings1 : s.innings2;
-    
-    const t1 = s.team1Name || "Team A";
-    const t2 = s.team2Name || "Team B";
-    const battingTeamLabel = loadedHistoryActiveTab === 1 ? `${t1} Innings` : `${t2} Innings`;
-    
-    // Set title and metadata
-    document.getElementById('history-modal-title').innerHTML = `<i class="fa-solid fa-circle-check" style="color: var(--color-green);"></i> Scorecard Viewer`;
-    document.getElementById('history-modal-date').textContent = `Date Played: ${loadedHistoryMatch.date}`;
-    
-    // Determine summary description
+    // Calculate match result summary text
     let summaryText = "";
     if (s.target === null) {
-        summaryText = `${battingTeamLabel} - ${s.innings1Completed ? "Completed" : "In Progress"}: ${inn.runs}/${inn.wickets} in ${inn.overs}.${inn.ballsInOver} Overs`;
+        summaryText = "Innings 1 in progress";
     } else {
-        if (loadedHistoryActiveTab === 1) {
-            summaryText = `Innings 1 Completed: ${s.innings1.runs}/${s.innings1.wickets}. Target set: ${s.target} Runs.`;
-        } else {
-            if (s.innings2Completed) {
-                if (s.innings2.runs >= s.target) {
-                    summaryText = `🏆 ${t2} successfully chased Target of ${s.target}! (${s.innings2.runs}/${s.innings2.wickets})`;
-                } else {
-                    summaryText = `🏆 ${t1} defended Target of ${s.target}! (${t2}: ${s.innings2.runs}/${s.innings2.wickets})`;
-                }
+        const target = s.target;
+        const runs2 = s.innings2 ? s.innings2.runs : 0;
+        const wickets2 = s.innings2 ? s.innings2.wickets : 0;
+        
+        if (s.innings2Completed || s.matchOver) {
+            if (runs2 >= target) {
+                summaryText = `${team2} won by ${10 - wickets2} wickets`;
+            } else if (runs2 === target - 1 && s.innings2Completed) {
+                summaryText = "Match Tied";
             } else {
-                summaryText = `Innings 2 in Progress: ${s.innings2.runs}/${s.innings2.wickets} in ${s.innings2.overs}.${s.innings2.ballsInOver} Overs (Target: ${s.target})`;
+                summaryText = `${team1} won by ${target - 1 - runs2} runs`;
+            }
+        } else {
+            if (!hasSecondInnings) {
+                summaryText = `Target set: ${target} runs`;
+            } else {
+                const oversLimit = s.maxOvers || 6;
+                const ballsRemaining = (oversLimit * 6) - ((s.innings2.overs || 0) * 6 + (s.innings2.ballsInOver || 0));
+                summaryText = `${team2} needs ${target - runs2} runs off ${ballsRemaining} balls`;
             }
         }
     }
-    document.getElementById('history-modal-summary').innerHTML = summaryText;
     
-    // Populate batting list
-    const battingList = document.getElementById('history-batting-list');
-    battingList.innerHTML = `
-        <div class="scorecard-row batting-grid header">
-            <span>Batter</span>
-            <span>R</span>
-            <span>B</span>
-            <span>4s</span>
-            <span>6s</span>
-            <span>SR</span>
-        </div>
-    `;
+    // Find top batsman and bowler for Innings 1
+    let inn1TopBatter = { name: "N/A", runs: 0, balls: 0 };
+    if (s.innings1.battingStats && s.innings1.battingStats.length > 0) {
+        s.innings1.battingStats.forEach(b => {
+            if (b.runs > inn1TopBatter.runs || (b.runs === inn1TopBatter.runs && b.balls < inn1TopBatter.balls && b.runs > 0)) {
+                inn1TopBatter = b;
+            }
+        });
+    }
+    let inn1TopBowler = { name: "N/A", wickets: 0, runs: 999, oversBalls: 0 };
+    if (s.innings1.bowlingStats && s.innings1.bowlingStats.length > 0) {
+        s.innings1.bowlingStats.forEach(b => {
+            if (b.wickets > inn1TopBowler.wickets || (b.wickets === inn1TopBowler.wickets && b.runs < inn1TopBowler.runs && b.oversBalls > 0)) {
+                inn1TopBowler = b;
+            }
+        });
+    }
     
-    inn.battingStats.forEach(b => {
-        const row = document.createElement('div');
-        row.className = "scorecard-row batting-grid";
-        
-        const sr = b.balls > 0 ? ((b.runs / b.balls) * 100).toFixed(1) : "0.0";
-        
-        let statusBadgeHtml = "";
-        if (b.active) {
-            statusBadgeHtml = `<span class="scorecard-status-badge status-notout">not out</span>`;
-        } else {
-            statusBadgeHtml = `<span class="scorecard-dismissal-text">${b.dismissal || 'OUT'}</span>`;
+    // Find top batsman and bowler for Innings 2 (if exists)
+    let inn2TopBatter = { name: "N/A", runs: 0, balls: 0 };
+    let inn2TopBowler = { name: "N/A", wickets: 0, runs: 999, oversBalls: 0 };
+    if (hasSecondInnings) {
+        if (s.innings2.battingStats && s.innings2.battingStats.length > 0) {
+            s.innings2.battingStats.forEach(b => {
+                if (b.runs > inn2TopBatter.runs || (b.runs === inn2TopBatter.runs && b.balls < inn2TopBatter.balls && b.runs > 0)) {
+                    inn2TopBatter = b;
+                }
+            });
         }
-        
-        row.innerHTML = `
-            <div class="scorecard-name-wrapper">
-                <span class="scorecard-player-name-text">${b.name}</span>
-                ${statusBadgeHtml}
-            </div>
-            <span>${b.runs}</span>
-            <span>${b.balls}</span>
-            <span>${b.fours}</span>
-            <span>${b.sixes}</span>
-            <span>${sr}</span>
-        `;
-        battingList.appendChild(row);
-    });
-    
-    // Populate bowling list
-    const bowlingList = document.getElementById('history-bowling-list');
-    bowlingList.innerHTML = `
-        <div class="scorecard-row bowling-grid header">
-            <span>Bowler</span>
-            <span>O</span>
-            <span>R</span>
-            <span>W</span>
-            <span>Econ</span>
-        </div>
-    `;
-    
-    inn.bowlingStats.forEach(bowler => {
-        const row = document.createElement('div');
-        row.className = "scorecard-row bowling-grid";
-        
-        let oWhole = Math.floor(bowler.oversBalls / 6);
-        let oLeft = bowler.oversBalls % 6;
-        let displayOvers = `${oWhole}.${oLeft}`;
-        
-        let econ = 0;
-        if (bowler.oversBalls > 0) {
-            econ = (bowler.runs / bowler.oversBalls) * 6;
+        if (s.innings2.bowlingStats && s.innings2.bowlingStats.length > 0) {
+            s.innings2.bowlingStats.forEach(b => {
+                if (b.wickets > inn2TopBowler.wickets || (b.wickets === inn2TopBowler.wickets && b.runs < inn2TopBowler.runs && b.oversBalls > 0)) {
+                    inn2TopBowler = b;
+                }
+            });
         }
+    }
+    
+    const contentContainer = document.getElementById('history-summary-modal-content');
+    if (!contentContainer) return;
+    
+    // Format Top Bowler Innings 1 Overs
+    let inn1BowlerOvers = "0.0";
+    if (inn1TopBowler.name !== "N/A") {
+        let oversWhole = Math.floor(inn1TopBowler.oversBalls / 6);
+        let oversBallsLeft = inn1TopBowler.oversBalls % 6;
+        inn1BowlerOvers = `${oversWhole}.${oversBallsLeft}`;
+    }
+    // Format Top Bowler Innings 2 Overs
+    let inn2BowlerOvers = "0.0";
+    if (inn2TopBowler.name !== "N/A" && inn2TopBowler.oversBalls) {
+        let oversWhole = Math.floor(inn2TopBowler.oversBalls / 6);
+        let oversBallsLeft = inn2TopBowler.oversBalls % 6;
+        inn2BowlerOvers = `${oversWhole}.${oversBallsLeft}`;
+    }
+    
+    // Build dynamic HTML layout
+    contentContainer.innerHTML = `
+        <div style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 12px; border-bottom: 1px dashed rgba(255,255,255,0.06); padding-bottom: 8px;">
+            Played on ${match.date}
+        </div>
         
-        row.innerHTML = `
-            <div class="scorecard-name-wrapper">
-                <span class="scorecard-player-name-text">${bowler.name}</span>
-                ${bowler.active ? '<span class="scorecard-status-badge status-notout">active</span>' : ''}
+        <!-- Score Rows -->
+        <div style="background: rgba(255,255,255,0.02); border: 1px solid var(--border-color); padding: 14px; border-radius: var(--radius-md); margin-bottom: 16px; display: flex; flex-direction: column; gap: 8px; text-align: left;">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <span style="font-weight: 700; color: var(--text-main); font-size: 0.95rem;">${team1}</span>
+                <span style="font-weight: 800; color: var(--color-blue); font-size: 1.05rem;">
+                    ${s.innings1.runs}/${s.innings1.wickets} <span style="font-size: 0.8rem; color: var(--text-muted); font-weight: 500;">(${s.innings1.overs}.${s.innings1.ballsInOver} Ov)</span>
+                </span>
             </div>
-            <span>${displayOvers}</span>
-            <span>${bowler.runs}</span>
-            <span>${bowler.wickets}</span>
-            <span>${econ.toFixed(1)}</span>
-        `;
-        bowlingList.appendChild(row);
-    });
-    
-    // Populate extras
-    document.getElementById('history-modal-wides').textContent = inn.extras.wides || 0;
-    document.getElementById('history-modal-noballs').textContent = inn.extras.noBalls || 0;
-    document.getElementById('history-modal-byes').textContent = inn.extras.byes || 0;
-    document.getElementById('history-modal-target').textContent = s.target !== null ? `${s.target} Runs` : "None Set";
-    
-    // Populate awards inside history details modal
-    const awardsContainer = document.getElementById('history-awards-container');
-    if (awardsContainer) {
-        awardsContainer.innerHTML = "";
-        if (s.awards && s.awards.mom) {
-            let mom = s.awards.mom;
-            let bestBatter = s.awards.bestBatter;
-            let bestBowler = s.awards.bestBowler;
+            ${hasSecondInnings ? `
+            <div style="display: flex; justify-content: space-between; align-items: center; border-top: 1px solid rgba(255,255,255,0.04); padding-top: 8px;">
+                <span style="font-weight: 700; color: var(--text-main); font-size: 0.95rem;">${team2}</span>
+                <span style="font-weight: 800; color: var(--color-green); font-size: 1.05rem;">
+                    ${s.innings2.runs}/${s.innings2.wickets} <span style="font-size: 0.8rem; color: var(--text-muted); font-weight: 500;">(${s.innings2.overs}.${s.innings2.ballsInOver} Ov)</span>
+                </span>
+            </div>
+            ` : ''}
+        </div>
+        
+        <!-- Trophy & Summary Text -->
+        <div style="font-size: 0.88rem; font-weight: 700; color: var(--color-gold); background: var(--color-gold-glow); border: 1px solid rgba(251, 191, 36, 0.2); padding: 10px; border-radius: var(--radius-sm); text-align: center; margin-bottom: 20px; display: flex; align-items: center; justify-content: center; gap: 8px;">
+            <i class="fa-solid fa-trophy" style="font-size: 1rem;"></i> ${summaryText}
+        </div>
+        
+        <!-- Top Performers Section -->
+        <div style="text-align: left; margin-bottom: 8px;">
+            <h4 style="font-size: 0.82rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; font-weight: 700; margin-bottom: 10px;"><i class="fa-solid fa-star"></i> Top Performers</h4>
             
-            let momStats = [];
-            if (mom.runs > 0) momStats.push(`${mom.runs} Runs (${mom.balls}b)`);
-            if (mom.wickets > 0 || mom.ballsBowled > 0) momStats.push(`${mom.wickets} Wkts for ${mom.conceded} (${Math.floor(mom.ballsBowled/6)}.${mom.ballsBowled%6} Ov)`);
-            
-            let batterStats = bestBatter ? `${bestBatter.runs} Runs off ${bestBatter.balls} balls (${bestBatter.fours}x4, ${bestBatter.sixes}x6)` : "N/A";
-            let bowlerStats = bestBowler ? `${bestBowler.wickets} Wkts for ${bestBowler.conceded} runs (${Math.floor(bestBowler.ballsBowled/6)}.${bestBowler.ballsBowled%6} Overs)` : "N/A";
-            
-            awardsContainer.innerHTML = `
-                <div class="awards-card" style="margin-top: 16px;">
-                    <h3><i class="fa-solid fa-trophy"></i> Match Awards</h3>
-                    
-                    <div class="award-row">
-                        <div class="award-title"><i class="fa-solid fa-award"></i> Man of the Match</div>
-                        <div class="award-winner-details">
-                            <div class="award-winner-name">${mom.name}</div>
-                            <div class="award-winner-stats">${mom.team} | ${momStats.join(" & ") || "Outstanding Performance"}</div>
+            <div style="display: grid; grid-template-columns: 1fr; gap: 10px;">
+                <!-- Innings 1 Performers -->
+                <div style="background: rgba(59,130,246,0.03); border: 1px solid rgba(59,130,246,0.1); border-radius: var(--radius-sm); padding: 10px; font-size: 0.82rem;">
+                    <div style="font-weight: 700; color: var(--color-blue); margin-bottom: 6px; font-size: 0.85rem;">${team1} Innings</div>
+                    <div style="display: flex; flex-direction: column; gap: 4px; color: var(--text-main);">
+                        ${inn1TopBatter.runs > 0 ? `
+                        <div style="display: flex; justify-content: space-between;">
+                            <span><i class="fa-solid fa-user-pen" style="width: 14px; font-size: 0.75rem; color: var(--text-muted);"></i> ${inn1TopBatter.name}</span>
+                            <strong>${inn1TopBatter.runs} (${inn1TopBatter.balls})</strong>
                         </div>
-                    </div>
-                    
-                    <div class="award-row">
-                        <div class="award-title"><i class="fa-solid fa-user-pen"></i> Best Batter</div>
-                        <div class="award-winner-details">
-                            <div class="award-winner-name">${bestBatter ? bestBatter.name : "N/A"}</div>
-                            <div class="award-winner-stats">${bestBatter ? bestBatter.team : ""} | ${batterStats}</div>
+                        ` : ''}
+                        ${inn1TopBowler.name !== "N/A" && inn1TopBowler.oversBalls > 0 ? `
+                        <div style="display: flex; justify-content: space-between;">
+                            <span><i class="fa-solid fa-baseball" style="width: 14px; font-size: 0.75rem; color: var(--text-muted);"></i> ${inn1TopBowler.name}</span>
+                            <strong>${inn1TopBowler.wickets}/${inn1TopBowler.runs} <span style="font-size: 0.72rem; color: var(--text-muted); font-weight: 500;">(${inn1BowlerOvers} Ov)</span></strong>
                         </div>
-                    </div>
-                    
-                    <div class="award-row">
-                        <div class="award-title"><i class="fa-solid fa-baseball"></i> Best Bowler</div>
-                        <div class="award-winner-details">
-                            <div class="award-winner-name">${bestBowler ? bestBowler.name : "N/A"}</div>
-                            <div class="award-winner-stats">${bestBowler ? bestBowler.team : ""} | ${bowlerStats}</div>
-                        </div>
+                        ` : ''}
                     </div>
                 </div>
-            `;
-        }
+                
+                <!-- Innings 2 Performers (if exists) -->
+                ${hasSecondInnings && (inn2TopBatter.runs > 0 || (inn2TopBowler.name !== "N/A" && inn2TopBowler.oversBalls > 0)) ? `
+                <div style="background: rgba(34,197,94,0.03); border: 1px solid rgba(34,197,94,0.1); border-radius: var(--radius-sm); padding: 10px; font-size: 0.82rem;">
+                    <div style="font-weight: 700; color: var(--color-green); margin-bottom: 6px; font-size: 0.85rem;">${team2} Innings</div>
+                    <div style="display: flex; flex-direction: column; gap: 4px; color: var(--text-main);">
+                        ${inn2TopBatter.runs > 0 ? `
+                        <div style="display: flex; justify-content: space-between;">
+                            <span><i class="fa-solid fa-user-pen" style="width: 14px; font-size: 0.75rem; color: var(--text-muted);"></i> ${inn2TopBatter.name}</span>
+                            <strong>${inn2TopBatter.runs} (${inn2TopBatter.balls})</strong>
+                        </div>
+                        ` : ''}
+                        ${inn2TopBowler.name !== "N/A" && inn2TopBowler.oversBalls > 0 ? `
+                        <div style="display: flex; justify-content: space-between;">
+                            <span><i class="fa-solid fa-baseball" style="width: 14px; font-size: 0.75rem; color: var(--text-muted);"></i> ${inn2TopBowler.name}</span>
+                            <strong>${inn2TopBowler.wickets}/${inn2TopBowler.runs} <span style="font-size: 0.72rem; color: var(--text-muted); font-weight: 500;">(${inn2BowlerOvers} Ov)</span></strong>
+                        </div>
+                        ` : ''}
+                    </div>
+                </div>
+                ` : ''}
+            </div>
+        </div>
+    `;
+    
+    // Bind the click event for loading this match
+    const loadBtn = document.getElementById('btn-history-load-match');
+    if (loadBtn) {
+        loadBtn.onclick = () => {
+            closeHistorySummaryModal();
+            loadSavedMatchIntoScoreboard(id);
+        };
+    }
+    
+    // Show modal
+    document.getElementById('history-summary-modal').classList.remove('hidden');
+}
+
+function closeHistorySummaryModal() {
+    const modal = document.getElementById('history-summary-modal');
+    if (modal) {
+        modal.classList.add('hidden');
     }
 }
 
-function closeHistoryDetailsModal() {
-    const modal = document.getElementById('history-details-modal');
-    if (modal) modal.classList.remove('open');
-    const overlay = document.getElementById('history-details-overlay');
-    if (overlay) overlay.classList.remove('open');
-    loadedHistoryMatch = null;
+function loadSavedMatchIntoScoreboard(id) {
+    let savedMatches = JSON.parse(localStorage.getItem('silent_killer_matches') || '[]');
+    let match = savedMatches.find(m => m.id === id);
+    if (!match) return;
+    
+    // Migrate the match state format
+    match.state = migrateMatchState(match.state);
+    
+    // Load state into global matchState
+    matchState = JSON.parse(JSON.stringify(match.state));
+    matchMaxOvers = matchState.maxOvers || 6;
+    
+    // Update setup input values
+    document.getElementById('setup-overs').value = matchMaxOvers;
+    document.getElementById('setup-team-a-name').value = matchState.teamAName || matchState.team1Name || "Team A";
+    document.getElementById('setup-team-b-name').value = matchState.teamBName || matchState.team2Name || "Team B";
+    
+    // Synchronize toss and team names
+    syncTossWinnerSelectLabels();
+    
+    // Update UI tab headers dynamically
+    document.getElementById('tab-innings-1').innerHTML = `<i class="fa-solid fa-circle-chevron-right" style="color: var(--color-blue);"></i> ${matchState.team1Name} Innings`;
+    document.getElementById('tab-innings-2').innerHTML = `<i class="fa-solid fa-circle-chevron-right" style="color: var(--text-dark);"></i> ${matchState.team2Name} Innings`;
+    
+    // Dynamic squad cards headers
+    const squadCardUs = document.querySelector('.squad-rosters-grid > div:first-child h3');
+    if (squadCardUs) squadCardUs.innerHTML = `<i class="fa-solid fa-shield-halved icon-spacing"></i> ${matchState.team1Name} Squad`;
+    
+    const squadCardThem = document.querySelector('.squad-rosters-grid > div:last-child h3');
+    if (squadCardThem) squadCardThem.innerHTML = `<i class="fa-solid fa-users icon-spacing"></i> ${matchState.team2Name} Squad`;
+    
+    // Transition screens
+    document.getElementById('match-setup-screen').classList.add('hidden');
+    document.getElementById('scoreboard-dashboard').classList.remove('hidden');
+    
+    // Sync current batsmen and bowler inputs in the scoring dashboard
+    const activeInn = getViewingInnings();
+    if (activeInn && activeInn.players) {
+        document.getElementById('bat1-name').value = activeInn.players.bat1 ? activeInn.players.bat1.name : "Batsman 1";
+        document.getElementById('bat2-name').value = activeInn.players.bat2 ? activeInn.players.bat2.name : "Batsman 2";
+        document.getElementById('bowler-name').value = activeInn.players.bowler ? activeInn.players.bowler.name : "Bowler";
+    }
+    
+    // Clear undo state history for the loaded match
+    stateHistory = [];
+    
+    // Switch view to match's current innings
+    switchViewTab(matchState.currentInnings);
+    renderSquadGrid();
+    renderScoreboard();
 }
+
+function returnToSetupScreen() {
+    document.getElementById('match-setup-screen').classList.remove('hidden');
+    document.getElementById('scoreboard-dashboard').classList.add('hidden');
+    loadSavedMatches(); // Refresh matches list!
+}
+
+
 
 // Converts any old single-innings saved match states dynamically into the new 2-innings format to guarantee crash-free loads
 function migrateMatchState(loadedState) {
@@ -2066,7 +2120,7 @@ function renderSetupSquads() {
             row.innerHTML = `
                 <span style="font-size: 0.8rem; font-weight: 700; color: var(--text-muted); text-align: center;">${index + 1}</span>
                 <input type="text" class="setup-input" value="${player.name}" oninput="updateSetupPlayer('a', ${index}, 'name', this.value)" placeholder="Player Name" style="width: 100%;" aria-label="Player Name">
-                <select class="setup-select" onchange="updateSetupPlayer('a', ${index}, 'role', this.value)" style="width: 110px;" aria-label="Player Role">
+                <select class="setup-select" onchange="updateSetupPlayer('a', ${index}, 'role', this.value)" style="width: 100%;" aria-label="Player Role">
                     <option value="Batsman" ${player.role === 'Batsman' ? 'selected' : ''}>Batsman</option>
                     <option value="Bowler" ${player.role === 'Bowler' ? 'selected' : ''}>Bowler</option>
                     <option value="All-Rounder" ${player.role === 'All-Rounder' ? 'selected' : ''}>All-Rounder</option>
@@ -2087,7 +2141,7 @@ function renderSetupSquads() {
             row.innerHTML = `
                 <span style="font-size: 0.8rem; font-weight: 700; color: var(--text-muted); text-align: center;">${index + 1}</span>
                 <input type="text" class="setup-input" value="${player.name}" oninput="updateSetupPlayer('b', ${index}, 'name', this.value)" placeholder="Player Name" style="width: 100%;" aria-label="Player Name">
-                <select class="setup-select" onchange="updateSetupPlayer('b', ${index}, 'role', this.value)" style="width: 110px;" aria-label="Player Role">
+                <select class="setup-select" onchange="updateSetupPlayer('b', ${index}, 'role', this.value)" style="width: 100%;" aria-label="Player Role">
                     <option value="Batsman" ${player.role === 'Batsman' ? 'selected' : ''}>Batsman</option>
                     <option value="Bowler" ${player.role === 'Bowler' ? 'selected' : ''}>Bowler</option>
                     <option value="All-Rounder" ${player.role === 'All-Rounder' ? 'selected' : ''}>All-Rounder</option>
@@ -2115,8 +2169,20 @@ function addSetupPlayer(team) {
 
 function deleteSetupPlayer(team, index) {
     const list = team === 'a' ? setupSquadA : setupSquadB;
-    list.splice(index, 1);
-    renderSetupSquads();
+    const listId = team === 'a' ? 'setup-team-a-list' : 'setup-team-b-list';
+    const container = document.getElementById(listId);
+    
+    if (container && container.children[index]) {
+        const row = container.children[index];
+        row.style.animation = 'setupRowFadeOut 0.2s cubic-bezier(0.4, 0, 1, 1) forwards';
+        setTimeout(() => {
+            list.splice(index, 1);
+            renderSetupSquads();
+        }, 180);
+    } else {
+        list.splice(index, 1);
+        renderSetupSquads();
+    }
 }
 
 // Collects setup settings, configures matchState, and launches scoreboard
@@ -2337,42 +2403,6 @@ function shareMatchToWhatsApp() {
     window.open("https://api.whatsapp.com/send?text=" + encodeURIComponent(message), "_blank");
 }
 
-function shareHistoryMatchToWhatsApp() {
-    if (!loadedHistoryMatch) return;
-    
-    const s = loadedHistoryMatch.state;
-    const t1 = s.team1Name || "Team A";
-    const t2 = s.team2Name || "Team B";
-    
-    let heading = `🏏 *SILENT KILLERS SCOREBOARD* 🏏\n🏆 *Completed Match Scorecard*\n\n`;
-    let scoreText = `*${t1} vs ${t2}*\n`;
-    scoreText += `*${t1} Innings:* ${s.innings1.runs}/${s.innings1.wickets} in ${s.innings1.overs}.${s.innings1.ballsInOver} Overs\n`;
-    scoreText += `*${t2} Innings:* ${s.innings2.runs}/${s.innings2.wickets} in ${s.innings2.overs}.${s.innings2.ballsInOver} Overs\n\n`;
-    
-    // Add result summary
-    let resultText = `*Result:* _Match Played on ${loadedHistoryMatch.date}_\n`;
-    
-    if (s.target !== null) {
-        if (s.innings2.runs >= s.target) {
-            resultText += `🏆 *${t2} successfully chased down Target of ${s.target}!* \n`;
-        } else if (s.innings2.runs === s.target - 1 && s.innings2Completed) {
-            resultText += `🤝 *Match Tied!* Scores level.\n`;
-        } else if (s.innings2Completed) {
-            resultText += `🏆 *${t1} defended Target of ${s.target} successfully!* \n`;
-        }
-    }
-    
-    // Add Man of the Match awards if present
-    let momText = "";
-    if (s.awards && s.awards.mom) {
-        momText = `\n🎖️ *Man of the Match:* _${s.awards.mom.name}_ (${s.awards.mom.team})\n`;
-    }
-    
-    let footer = `\n_Scored via Silent Killers Score System_ 🏆`;
-    
-    let message = heading + scoreText + resultText + momText + footer;
-    window.open("https://api.whatsapp.com/send?text=" + encodeURIComponent(message), "_blank");
-}
 
 function exportDataBackup() {
     try {
