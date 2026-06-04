@@ -357,6 +357,7 @@ function triggerWicket() {
     // Reset modal and display
     document.getElementById('fielder-selection-container').classList.add('hidden');
     document.getElementById('dismissal-modal').classList.remove('hidden');
+    updateBodyScrollLock();
 }
 
 function selectDismissalType(type) {
@@ -414,6 +415,7 @@ function selectDismissalType(type) {
 
 function confirmWicket(dismissalText, isRunOut) {
     document.getElementById('dismissal-modal').classList.add('hidden');
+    updateBodyScrollLock();
     
     saveStateSnapshot();
     
@@ -479,6 +481,7 @@ function confirmWicket(dismissalText, isRunOut) {
 
 function cancelDismissal() {
     document.getElementById('dismissal-modal').classList.add('hidden');
+    updateBodyScrollLock();
     
     // Reset modal active selections
     const modalButtons = document.querySelectorAll('.btn-dismissal-type');
@@ -535,6 +538,7 @@ function openWicketModal() {
     });
     
     document.getElementById('wicket-modal').classList.remove('hidden');
+    updateBodyScrollLock();
 }
 
 function selectNewBatsman(player) {
@@ -563,6 +567,7 @@ function selectNewBatsman(player) {
 
 function closeWicketModal() {
     document.getElementById('wicket-modal').classList.add('hidden');
+    updateBodyScrollLock();
 }
 
 // Progresses ball counts and overs completion (6 valid balls)
@@ -724,6 +729,7 @@ function openBowlerModal() {
     }
     
     document.getElementById('bowler-modal').classList.remove('hidden');
+    updateBodyScrollLock();
 }
 
 function selectNewBowler(bowlerName) {
@@ -773,6 +779,7 @@ function selectNewBowler(bowlerName) {
 
 function closeBowlerModal() {
     document.getElementById('bowler-modal').classList.add('hidden');
+    updateBodyScrollLock();
 }
 
 // Rotates strike between batsman 1 and batsman 2
@@ -1384,6 +1391,7 @@ function showInningsTransitionModal() {
     `;
     
     document.getElementById('match-over-modal').classList.remove('hidden');
+    updateBodyScrollLock();
     document.getElementById('status-display').innerHTML = `<span style="color: var(--color-gold);"><i class="fa-solid fa-flag"></i> Innings 1 Completed!</span>`;
 }
 
@@ -1598,15 +1606,18 @@ function endMatch(message) {
     `;
     
     document.getElementById('match-over-modal').classList.remove('hidden');
+    updateBodyScrollLock();
     document.getElementById('status-display').innerHTML = `<span style="color: var(--color-gold);"><i class="fa-solid fa-trophy"></i> Match Completed!</span>`;
 }
 
 function closeMatchModal() {
     document.getElementById('match-over-modal').classList.add('hidden');
+    updateBodyScrollLock();
 }
 
 function showCompletedMatchModal() {
     document.getElementById('match-over-modal').classList.remove('hidden');
+    updateBodyScrollLock();
 }
 
 function confirmReset() {
@@ -1943,6 +1954,7 @@ function openHistorySummaryModal(id) {
     
     // Show modal
     document.getElementById('history-summary-modal').classList.remove('hidden');
+    updateBodyScrollLock();
 }
 
 function closeHistorySummaryModal() {
@@ -1950,6 +1962,7 @@ function closeHistorySummaryModal() {
     if (modal) {
         modal.classList.add('hidden');
     }
+    updateBodyScrollLock();
 }
 
 function loadSavedMatchIntoScoreboard(id) {
@@ -2002,12 +2015,14 @@ function loadSavedMatchIntoScoreboard(id) {
     switchViewTab(matchState.currentInnings);
     renderSquadGrid();
     renderScoreboard();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
 function returnToSetupScreen() {
     document.getElementById('match-setup-screen').classList.remove('hidden');
     document.getElementById('scoreboard-dashboard').classList.add('hidden');
     loadSavedMatches(); // Refresh matches list!
+    window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
 
@@ -2342,6 +2357,7 @@ function launchScoreboard() {
     switchViewTab(1);
     renderSquadGrid();
     renderScoreboard();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
 // ==========================================================
@@ -2486,6 +2502,19 @@ function importDataBackup(event) {
         }
     };
     reader.readAsText(file);
+}
+
+function updateBodyScrollLock() {
+    const modals = ['dismissal-modal', 'wicket-modal', 'bowler-modal', 'match-over-modal', 'history-summary-modal'];
+    const anyOpen = modals.some(id => {
+        const el = document.getElementById(id);
+        return el && !el.classList.contains('hidden');
+    });
+    if (anyOpen) {
+        document.body.classList.add('modal-open');
+    } else {
+        document.body.classList.remove('modal-open');
+    }
 }
 
 
