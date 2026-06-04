@@ -358,6 +358,7 @@ body {
 
 /* Card base */
 .card {
+    min-width: 0;
     background-color: var(--bg-card);
     border: 1px solid var(--border-color);
     border-radius: var(--radius-lg);
@@ -593,7 +594,8 @@ body {
     font-size: 1.15rem;
     font-weight: 600;
     outline: none;
-    width: 90%;
+    width: 100%;
+    min-width: 0;
     cursor: edit;
 }
 
@@ -1334,7 +1336,8 @@ body {
     }
 
     .table-row {
-        width: max-content;
+        width: 100%;
+        min-width: max-content;
         gap: 4px;
         padding: 8px 10px;
         font-size: 0.92rem;
