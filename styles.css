@@ -60,10 +60,7 @@
 
 html {
     scroll-behavior: smooth;
-}
-
-html, body {
-    overflow-x: hidden;
+    overflow-x: hidden; /* Prevent horizontal scrolling globally */
     width: 100%;
     -webkit-overflow-scrolling: touch; /* smooth inertial scrolling on iOS/Safari */
 }
@@ -77,7 +74,7 @@ body {
     transition: background-color 0.3s ease;
 }
 
-body.modal-open {
+html.modal-open, body.modal-open {
     overflow: hidden !important;
 }
 
@@ -2091,4 +2088,99 @@ body.modal-open {
         margin: 0;
         border-color: transparent;
     }
+}
+
+/* Touch delay override & hardware acceleration optimizations for mobile & WebView / APK wrappers */
+button,
+select,
+input,
+textarea,
+a,
+.btn,
+.btn-score,
+.btn-util,
+.history-card-item,
+.roster-select-item {
+    touch-action: manipulation;
+}
+
+/* tactile click feedback on mobile touch screens */
+.btn:active,
+.btn-score:active,
+.btn-util:active:not(:disabled),
+.history-card-item:active {
+    transform: scale(0.97) !important;
+    transition: transform 0.05s ease !important;
+}
+
+/* GPU hardware acceleration hints for animation performance in APK WebViews */
+.modal-card,
+.setup-card,
+.glow,
+.history-card-item {
+    will-change: transform, opacity;
+}
+
+/* Partnership Box hover effect */
+.partnership-box:hover {
+    background-color: rgba(255, 255, 255, 0.05) !important;
+    border-color: var(--color-green) !important;
+}
+
+/* Partnership Modal List Item styles */
+.partnership-list-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 14px 18px;
+    background-color: rgba(255, 255, 255, 0.02);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    transition: var(--transition);
+    text-align: left;
+}
+
+.partnership-list-item.active-partnership {
+    border-color: rgba(16, 185, 129, 0.4);
+    background-color: rgba(16, 185, 129, 0.03);
+    box-shadow: 0 0 15px rgba(16, 185, 129, 0.05);
+}
+
+.partnership-wkt-badge {
+    padding: 4px 8px;
+    border-radius: var(--radius-sm);
+    font-size: 0.72rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    display: inline-block;
+}
+
+.wkt-badge-completed {
+    background-color: rgba(239, 68, 68, 0.1);
+    border: 1px solid rgba(239, 68, 68, 0.3);
+    color: var(--color-danger);
+}
+
+.wkt-badge-active {
+    background-color: rgba(16, 185, 129, 0.1);
+    border: 1px solid rgba(16, 185, 129, 0.3);
+    color: var(--color-green);
+}
+
+/* Scrollable Saved Match History list */
+.history-setup-scroll-container {
+    max-height: 480px;
+    overflow-y: auto;
+    padding-right: 8px;
+    margin: 10px 0;
+}
+
+.history-setup-scroll-container::-webkit-scrollbar {
+    width: 6px;
+}
+
+.history-setup-scroll-container::-webkit-scrollbar-thumb {
+    background-color: var(--border-color);
+    border-radius: 3px;
 }

@@ -33,6 +33,7 @@ let matchState = {
         totalValidBalls: 0,
         extras: { wides: 0, noBalls: 0, byes: 0 },
         partnership: { runs: 0, balls: 0 },
+        partnerships: [],
         players: {
             bat1: { name: "Ashok", runs: 0, balls: 0, fours: 0, sixes: 0, onStrike: true },
             bat2: { name: "Batsman 2", runs: 0, balls: 0, fours: 0, sixes: 0, onStrike: false },
@@ -57,6 +58,7 @@ let matchState = {
         totalValidBalls: 0,
         extras: { wides: 0, noBalls: 0, byes: 0 },
         partnership: { runs: 0, balls: 0 },
+        partnerships: [],
         players: {
             bat1: { name: "Opp Batter 1", runs: 0, balls: 0, fours: 0, sixes: 0, onStrike: true },
             bat2: { name: "Opp Batter 2", runs: 0, balls: 0, fours: 0, sixes: 0, onStrike: false },
@@ -108,6 +110,7 @@ function getBowlingSquad() {
 // ==========================================================
 
 document.addEventListener("DOMContentLoaded", () => {
+    initTheme();
     loadSavedMatches();
     resetState();
 });
@@ -420,6 +423,23 @@ function confirmWicket(dismissalText, isRunOut) {
     saveStateSnapshot();
     
     const inn = getActiveInnings();
+    
+    // Record partnership before resetting
+    if (!inn.partnerships) inn.partnerships = [];
+    let finalPartRuns = inn.partnership ? inn.partnership.runs : 0;
+    let finalPartBalls = inn.partnership ? inn.partnership.balls : 0;
+    const activeStriker = getActiveStriker();
+    if (activeStriker) {
+        finalPartBalls += 1; // Count the wicket delivery ball
+    }
+    inn.partnerships.push({
+        bat1: inn.players.bat1.name,
+        bat2: inn.players.bat2.name,
+        runs: finalPartRuns,
+        balls: finalPartBalls,
+        wicketNum: inn.wickets + 1 // Wicket number just fell
+    });
+    
     inn.wickets += 1;
     
     // Reset batting partnership
@@ -444,7 +464,6 @@ function confirmWicket(dismissalText, isRunOut) {
     inn.currentOverBalls.push({ label: "W", type: "wicket" });
     
     // Wicketed striker batsman crease stats update
-    const activeStriker = getActiveStriker();
     if (activeStriker) {
         activeStriker.balls += 1;
         activeStriker.onStrike = false; // off strike
@@ -807,6 +826,165 @@ function strikeChange(index) {
     renderScoreboard();
 }
 
+let targetBatsmanCreaseSlot = null; // 'bat1' or 'bat2'
+
+function openBatsmanSelectionModal() {
+    const inn = getActiveInnings();
+    if (!inn) return;
+    
+    // Set crease player labels in Step 1
+    const bat1Name = inn.players.bat1 ? inn.players.bat1.name : "Batsman 1";
+    const bat2Name = inn.players.bat2 ? inn.players.bat2.name : "Batsman 2";
+    
+    document.getElementById('lbl-change-slot-bat1-name').textContent = bat1Name;
+    document.getElementById('lbl-change-slot-bat2-name').textContent = bat2Name;
+    
+    // Default target: the on-strike batsman
+    const isOnStrike1 = inn.players.bat1 && inn.players.bat1.onStrike;
+    const defaultSlot = isOnStrike1 ? 'bat1' : 'bat2';
+    
+    // Show Modal
+    document.getElementById('change-batsman-modal').classList.remove('hidden');
+    updateBodyScrollLock();
+    
+    // Select the default slot and populate list immediately
+    selectBatsmanSlotToReplace(defaultSlot);
+}
+
+function closeChangeBatsmanModal() {
+    document.getElementById('change-batsman-modal').classList.add('hidden');
+    updateBodyScrollLock();
+}
+
+function selectBatsmanSlotToReplace(slot) {
+    targetBatsmanCreaseSlot = slot;
+    
+    // Highlight selected button
+    document.getElementById('btn-change-slot-bat1').classList.toggle('active', slot === 'bat1');
+    document.getElementById('btn-change-slot-bat2').classList.toggle('active', slot === 'bat2');
+    
+    // Populate Step 2 list with unbatted/inactive player roster
+    const listContainer = document.getElementById('modal-change-batsman-list');
+    if (!listContainer) return;
+    listContainer.innerHTML = "";
+    
+    const squad = getBattingSquad();
+    const inn = getActiveInnings();
+    const currentBat1 = inn.players.bat1 ? inn.players.bat1.name.toLowerCase() : "";
+    const currentBat2 = inn.players.bat2 ? inn.players.bat2.name.toLowerCase() : "";
+    
+    // Find players in squad who are not currently at the crease and are not OUT
+    const availablePlayers = squad.filter(player => {
+        const nameLower = player.name.toLowerCase();
+        if (nameLower === currentBat1 || nameLower === currentBat2) return false;
+        
+        // Exclude players who have already gotten OUT in this innings
+        const persistentStat = inn.battingStats.find(b => b.name.toLowerCase() === nameLower);
+        if (persistentStat && persistentStat.out) return false;
+        
+        return true;
+    });
+    
+    if (availablePlayers.length === 0) {
+        const msg = document.createElement('p');
+        msg.style.color = "var(--text-muted)";
+        msg.style.fontSize = "0.82rem";
+        msg.textContent = "No other players available in the squad roster.";
+        listContainer.appendChild(msg);
+    } else {
+        availablePlayers.forEach(player => {
+            const item = document.createElement('div');
+            item.className = "roster-select-item";
+            
+            let statusLabel = player.batted ? "Batted" : "Next";
+            let statusClass = player.batted ? "status-out" : "status-notout";
+            
+            // Check if player has active batting stats
+            const persistentStat = inn.battingStats.find(b => b.name.toLowerCase() === player.name.toLowerCase());
+            if (persistentStat && persistentStat.out) {
+                statusLabel = "Out";
+                statusClass = "status-out";
+            }
+            
+            item.innerHTML = `
+                <div class="roster-select-info">
+                    <span class="roster-select-name">${player.name}</span>
+                    <span class="roster-select-role">${player.role || 'Batsman'}</span>
+                </div>
+                <span class="scorecard-status-badge ${statusClass}">${statusLabel}</span>
+            `;
+            
+            item.onclick = () => {
+                swapCreaseBatsman(player);
+            };
+            listContainer.appendChild(item);
+        });
+    }
+    
+    // Show Step 2
+    document.getElementById('change-batsman-roster-container').classList.remove('hidden');
+}
+
+function swapCreaseBatsman(player) {
+    if (!targetBatsmanCreaseSlot) return;
+    
+    saveStateSnapshot();
+    const inn = getActiveInnings();
+    
+    // Get the name of the batsman who is leaving the crease
+    const leavingBatsmanName = inn.players[targetBatsmanCreaseSlot].name;
+    
+    // Find if the leaving batsman has scored any runs in this innings
+    const leavingPersistentStat = inn.battingStats.find(b => b.name.toLowerCase() === leavingBatsmanName.toLowerCase());
+    
+    // If the leaving batsman has not faced any balls or scored any runs, we can optionally deactivate them
+    if (leavingPersistentStat && leavingPersistentStat.runs === 0 && leavingPersistentStat.balls === 0) {
+        leavingPersistentStat.active = false;
+    } else if (leavingPersistentStat) {
+        // Otherwise, mark them as active = false (they remain in the scorecard but off the crease)
+        leavingPersistentStat.active = false;
+    }
+    
+    // Mark the new player as batted
+    player.batted = true;
+    
+    // Check if the replacement player already has a persistent battingStat record in this innings
+    let replacementPersistentStat = inn.battingStats.find(b => b.name.toLowerCase() === player.name.toLowerCase());
+    if (replacementPersistentStat) {
+        replacementPersistentStat.active = true;
+        replacementPersistentStat.out = false; // in case they were marked out previously by mistake
+    } else {
+        // Create new batting stat entry
+        inn.battingStats.push({
+            name: player.name,
+            runs: 0,
+            balls: 0,
+            fours: 0,
+            sixes: 0,
+            out: false,
+            active: true
+        });
+        replacementPersistentStat = inn.battingStats[inn.battingStats.length - 1];
+    }
+    
+    // Set the new player at the crease
+    inn.players[targetBatsmanCreaseSlot] = {
+        name: player.name,
+        runs: replacementPersistentStat.runs,
+        balls: replacementPersistentStat.balls,
+        fours: replacementPersistentStat.fours,
+        sixes: replacementPersistentStat.sixes,
+        onStrike: inn.players[targetBatsmanCreaseSlot].onStrike // retain strike status
+    };
+    
+    // Sync the input values in the dashboard
+    document.getElementById('bat1-name').value = inn.players.bat1 ? inn.players.bat1.name : "";
+    document.getElementById('bat2-name').value = inn.players.bat2 ? inn.players.bat2.name : "";
+    
+    closeChangeBatsmanModal();
+    renderScoreboard();
+}
+
 // Retrieves currently on-strike batsman
 function getActiveStriker() {
     const inn = getActiveInnings();
@@ -934,59 +1112,6 @@ function renderSquadGrid() {
             gridThem.appendChild(div);
         });
     }
-}
-
-function syncSquadMember(squadType, index, field, value) {
-    saveStateSnapshot();
-    const squad = squadType === 'us' ? matchState.squadUs : matchState.squadThem;
-    squad[index][field] = value;
-    
-    // Update active crease players names if they are changed in rosters
-    const inn = getActiveInnings();
-    if (field === 'name') {
-        const isUsBatting = (matchState.currentInnings === 1 && squadType === 'us') || (matchState.currentInnings === 2 && squadType === 'them');
-        if (isUsBatting) {
-            if (inn.players.bat1.name === squad[index].name) {
-                inn.players.bat1.name = value;
-                const p1 = getPersistentBatter(inn.players.bat1.name);
-                if (p1) p1.name = value;
-            } else if (inn.players.bat2.name === squad[index].name) {
-                inn.players.bat2.name = value;
-                const p2 = getPersistentBatter(inn.players.bat2.name);
-                if (p2) p2.name = value;
-            }
-        }
-    }
-    renderScoreboard();
-}
-
-function addNewRosterPlayer(squadType) {
-    saveStateSnapshot();
-    const squad = squadType === 'us' ? matchState.squadUs : matchState.squadThem;
-    let nextNum = squad.length + 1;
-    
-    squad.push({
-        name: squadType === 'us' ? `Player ${nextNum}` : `Opp Bowler ${nextNum}`,
-        role: squadType === 'us' ? "Batsman" : "Bowler",
-        batted: false
-    });
-    
-    renderSquadGrid();
-    renderScoreboard();
-}
-
-function deleteSquadMember(squadType, index) {
-    const squad = squadType === 'us' ? matchState.squadUs : matchState.squadThem;
-    if (squad.length <= 2) {
-        alert("Roster must have at least 2 active players!");
-        return;
-    }
-    
-    saveStateSnapshot();
-    squad.splice(index, 1);
-    
-    renderSquadGrid();
-    renderScoreboard();
 }
 
 // ==========================================================
@@ -1235,8 +1360,14 @@ function renderScoreboard() {
     // 10. Batting partnership display
     const part = inn.partnership || { runs: 0, balls: 0 };
     const partDisplay = document.getElementById('partnership-display');
+    const partLabel = document.getElementById('partnership-label');
     if (partDisplay) {
         partDisplay.textContent = `${part.runs} Runs (${part.balls} balls)`;
+    }
+    if (partLabel) {
+        const bat1Name = inn.players.bat1 ? inn.players.bat1.name : "Batsman 1";
+        const bat2Name = inn.players.bat2 ? inn.players.bat2.name : "Batsman 2";
+        partLabel.innerHTML = `<i class="fa-solid fa-handshake"></i> Partnership (${bat1Name} & ${bat2Name}):`;
     }
 
     // 11. Update Locks & opacity
@@ -1653,10 +1784,25 @@ function toggleTheme() {
     
     if (currentTheme === 'light') {
         document.body.removeAttribute('data-theme');
-        icon.className = 'fa-solid fa-moon';
+        if (icon) icon.className = 'fa-solid fa-moon';
+        localStorage.setItem('scoreboard-theme', 'dark');
     } else {
         document.body.setAttribute('data-theme', 'light');
-        icon.className = 'fa-solid fa-sun';
+        if (icon) icon.className = 'fa-solid fa-sun';
+        localStorage.setItem('scoreboard-theme', 'light');
+    }
+}
+
+function initTheme() {
+    const savedTheme = localStorage.getItem('scoreboard-theme') || 'light';
+    const icon = document.querySelector('.btn-theme i');
+    
+    if (savedTheme === 'light') {
+        document.body.setAttribute('data-theme', 'light');
+        if (icon) icon.className = 'fa-solid fa-sun';
+    } else {
+        document.body.removeAttribute('data-theme');
+        if (icon) icon.className = 'fa-solid fa-moon';
     }
 }
 
@@ -2040,6 +2186,8 @@ function migrateMatchState(loadedState) {
         loadedState.maxOvers = loadedState.maxOvers || 6;
         loadedState.innings1.partnership = loadedState.innings1.partnership || { runs: 0, balls: 0 };
         loadedState.innings2.partnership = loadedState.innings2.partnership || { runs: 0, balls: 0 };
+        loadedState.innings1.partnerships = loadedState.innings1.partnerships || [];
+        loadedState.innings2.partnerships = loadedState.innings2.partnerships || [];
         return loadedState;
     }
     
@@ -2076,6 +2224,7 @@ function migrateMatchState(loadedState) {
             totalValidBalls: loadedState.totalValidBalls || 0,
             extras: loadedState.extras || { wides: 0, noBalls: 0, byes: 0 },
             partnership: { runs: 0, balls: 0 },
+            partnerships: [],
             players: loadedState.players || {
                 bat1: { name: "Ashok", runs: 0, balls: 0, fours: 0, sixes: 0, onStrike: true },
                 bat2: { name: "Batsman 2", runs: 0, balls: 0, fours: 0, sixes: 0, onStrike: false },
@@ -2094,6 +2243,7 @@ function migrateMatchState(loadedState) {
             totalValidBalls: 0,
             extras: { wides: 0, noBalls: 0, byes: 0 },
             partnership: { runs: 0, balls: 0 },
+            partnerships: [],
             players: {
                 bat1: { name: "Opp Batter 1", runs: 0, balls: 0, fours: 0, sixes: 0, onStrike: true },
                 bat2: { name: "Opp Batter 2", runs: 0, balls: 0, fours: 0, sixes: 0, onStrike: false },
@@ -2124,47 +2274,51 @@ function migrateMatchState(loadedState) {
 // MATCH SETUP & ROSTER BUILDERS ENGINE
 // ==========================================================
 
-function renderSetupSquads() {
+function renderSetupSquads(targetTeam) {
     // 1. Render Team A list
-    const listA = document.getElementById('setup-team-a-list');
-    if (listA) {
-        listA.innerHTML = "";
-        setupSquadA.forEach((player, index) => {
-            const row = document.createElement('div');
-            row.className = "setup-player-row";
-            row.innerHTML = `
-                <span style="font-size: 0.8rem; font-weight: 700; color: var(--text-muted); text-align: center;">${index + 1}</span>
-                <input type="text" class="setup-input" value="${player.name}" oninput="updateSetupPlayer('a', ${index}, 'name', this.value)" placeholder="Player Name" style="width: 100%;" aria-label="Player Name">
-                <select class="setup-select" onchange="updateSetupPlayer('a', ${index}, 'role', this.value)" style="width: 100%;" aria-label="Player Role">
-                    <option value="Batsman" ${player.role === 'Batsman' ? 'selected' : ''}>Batsman</option>
-                    <option value="Bowler" ${player.role === 'Bowler' ? 'selected' : ''}>Bowler</option>
-                    <option value="All-Rounder" ${player.role === 'All-Rounder' ? 'selected' : ''}>All-Rounder</option>
-                </select>
-                <button class="btn-roster-delete" onclick="deleteSetupPlayer('a', ${index})" style="color: var(--color-danger); cursor: pointer;" aria-label="Delete Player"><i class="fa-solid fa-trash-can"></i></button>
-            `;
-            listA.appendChild(row);
-        });
+    if (!targetTeam || targetTeam === 'a') {
+        const listA = document.getElementById('setup-team-a-list');
+        if (listA) {
+            listA.innerHTML = "";
+            setupSquadA.forEach((player, index) => {
+                const row = document.createElement('div');
+                row.className = "setup-player-row";
+                row.innerHTML = `
+                    <span style="font-size: 0.8rem; font-weight: 700; color: var(--text-muted); text-align: center;">${index + 1}</span>
+                    <input type="text" class="setup-input" value="${player.name}" oninput="updateSetupPlayer('a', ${index}, 'name', this.value)" placeholder="Player Name" style="width: 100%;" aria-label="Player Name">
+                    <select class="setup-select" onchange="updateSetupPlayer('a', ${index}, 'role', this.value)" style="width: 100%;" aria-label="Player Role">
+                        <option value="Batsman" ${player.role === 'Batsman' ? 'selected' : ''}>Batsman</option>
+                        <option value="Bowler" ${player.role === 'Bowler' ? 'selected' : ''}>Bowler</option>
+                        <option value="All-Rounder" ${player.role === 'All-Rounder' ? 'selected' : ''}>All-Rounder</option>
+                    </select>
+                    <button class="btn-roster-delete" onclick="deleteSetupPlayer('a', ${index})" style="color: var(--color-danger); cursor: pointer;" aria-label="Delete Player"><i class="fa-solid fa-trash-can"></i></button>
+                `;
+                listA.appendChild(row);
+            });
+        }
     }
 
     // 2. Render Team B list
-    const listB = document.getElementById('setup-team-b-list');
-    if (listB) {
-        listB.innerHTML = "";
-        setupSquadB.forEach((player, index) => {
-            const row = document.createElement('div');
-            row.className = "setup-player-row";
-            row.innerHTML = `
-                <span style="font-size: 0.8rem; font-weight: 700; color: var(--text-muted); text-align: center;">${index + 1}</span>
-                <input type="text" class="setup-input" value="${player.name}" oninput="updateSetupPlayer('b', ${index}, 'name', this.value)" placeholder="Player Name" style="width: 100%;" aria-label="Player Name">
-                <select class="setup-select" onchange="updateSetupPlayer('b', ${index}, 'role', this.value)" style="width: 100%;" aria-label="Player Role">
-                    <option value="Batsman" ${player.role === 'Batsman' ? 'selected' : ''}>Batsman</option>
-                    <option value="Bowler" ${player.role === 'Bowler' ? 'selected' : ''}>Bowler</option>
-                    <option value="All-Rounder" ${player.role === 'All-Rounder' ? 'selected' : ''}>All-Rounder</option>
-                </select>
-                <button class="btn-roster-delete" onclick="deleteSetupPlayer('b', ${index})" style="color: var(--color-danger); cursor: pointer;" aria-label="Delete Player"><i class="fa-solid fa-trash-can"></i></button>
-            `;
-            listB.appendChild(row);
-        });
+    if (!targetTeam || targetTeam === 'b') {
+        const listB = document.getElementById('setup-team-b-list');
+        if (listB) {
+            listB.innerHTML = "";
+            setupSquadB.forEach((player, index) => {
+                const row = document.createElement('div');
+                row.className = "setup-player-row";
+                row.innerHTML = `
+                    <span style="font-size: 0.8rem; font-weight: 700; color: var(--text-muted); text-align: center;">${index + 1}</span>
+                    <input type="text" class="setup-input" value="${player.name}" oninput="updateSetupPlayer('b', ${index}, 'name', this.value)" placeholder="Player Name" style="width: 100%;" aria-label="Player Name">
+                    <select class="setup-select" onchange="updateSetupPlayer('b', ${index}, 'role', this.value)" style="width: 100%;" aria-label="Player Role">
+                        <option value="Batsman" ${player.role === 'Batsman' ? 'selected' : ''}>Batsman</option>
+                        <option value="Bowler" ${player.role === 'Bowler' ? 'selected' : ''}>Bowler</option>
+                        <option value="All-Rounder" ${player.role === 'All-Rounder' ? 'selected' : ''}>All-Rounder</option>
+                    </select>
+                    <button class="btn-roster-delete" onclick="deleteSetupPlayer('b', ${index})" style="color: var(--color-danger); cursor: pointer;" aria-label="Delete Player"><i class="fa-solid fa-trash-can"></i></button>
+                `;
+                listB.appendChild(row);
+            });
+        }
     }
 }
 
@@ -2179,7 +2333,20 @@ function addSetupPlayer(team) {
     const list = team === 'a' ? setupSquadA : setupSquadB;
     const defaultName = `Player ${list.length + 1}`;
     list.push({ name: defaultName, role: "Batsman" });
-    renderSetupSquads();
+    
+    // Only render the affected team box
+    renderSetupSquads(team);
+    
+    // Auto-focus the name input of the new row so typing can continue smoothly
+    const listId = team === 'a' ? 'setup-team-a-list' : 'setup-team-b-list';
+    const container = document.getElementById(listId);
+    if (container && container.lastElementChild) {
+        const input = container.lastElementChild.querySelector('.setup-input');
+        if (input) {
+            input.focus();
+            input.select();
+        }
+    }
 }
 
 function deleteSetupPlayer(team, index) {
@@ -2192,11 +2359,11 @@ function deleteSetupPlayer(team, index) {
         row.style.animation = 'setupRowFadeOut 0.2s cubic-bezier(0.4, 0, 1, 1) forwards';
         setTimeout(() => {
             list.splice(index, 1);
-            renderSetupSquads();
+            renderSetupSquads(team);
         }, 180);
     } else {
         list.splice(index, 1);
-        renderSetupSquads();
+        renderSetupSquads(team);
     }
 }
 
@@ -2287,6 +2454,7 @@ function launchScoreboard() {
             totalValidBalls: 0,
             extras: { wides: 0, noBalls: 0, byes: 0 },
             partnership: { runs: 0, balls: 0 },
+            partnerships: [],
             players: {
                 bat1: { name: team1Roster[0].name, runs: 0, balls: 0, fours: 0, sixes: 0, onStrike: true },
                 bat2: { name: team1Roster[1].name, runs: 0, balls: 0, fours: 0, sixes: 0, onStrike: false },
@@ -2310,6 +2478,7 @@ function launchScoreboard() {
             totalValidBalls: 0,
             extras: { wides: 0, noBalls: 0, byes: 0 },
             partnership: { runs: 0, balls: 0 },
+            partnerships: [],
             players: {
                 bat1: { name: team2Roster[0].name, runs: 0, balls: 0, fours: 0, sixes: 0, onStrike: true },
                 bat2: { name: team2Roster[1].name, runs: 0, balls: 0, fours: 0, sixes: 0, onStrike: false },
@@ -2505,15 +2674,128 @@ function importDataBackup(event) {
 }
 
 function updateBodyScrollLock() {
-    const modals = ['dismissal-modal', 'wicket-modal', 'bowler-modal', 'match-over-modal', 'history-summary-modal'];
+    const modals = ['dismissal-modal', 'wicket-modal', 'bowler-modal', 'match-over-modal', 'history-summary-modal', 'change-batsman-modal', 'partnerships-modal'];
     const anyOpen = modals.some(id => {
         const el = document.getElementById(id);
         return el && !el.classList.contains('hidden');
     });
     if (anyOpen) {
         document.body.classList.add('modal-open');
+        document.documentElement.classList.add('modal-open');
     } else {
         document.body.classList.remove('modal-open');
+        document.documentElement.classList.remove('modal-open');
+    }
+}
+
+// ==========================================================
+// PARTNERSHIP MODAL CONTROLLERS & RENDERERS
+// ==========================================================
+
+function openPartnershipsModal() {
+    const modal = document.getElementById('partnerships-modal');
+    if (!modal) return;
+    modal.classList.remove('hidden');
+    updateBodyScrollLock();
+    renderPartnershipsModal();
+}
+
+function closePartnershipsModal() {
+    const modal = document.getElementById('partnerships-modal');
+    if (modal) {
+        modal.classList.add('hidden');
+    }
+    updateBodyScrollLock();
+}
+
+function getOrdinal(n) {
+    const s = ["th", "st", "nd", "rd"];
+    const v = n % 100;
+    return n + (s[(v - 20) % 10] || s[v] || s[0]);
+}
+
+function renderPartnershipsModal() {
+    const listContainer = document.getElementById('partnerships-list');
+    if (!listContainer) return;
+    listContainer.innerHTML = "";
+    
+    const inn = getViewingInnings();
+    
+    // Determine if the viewed innings is already completed
+    const isCompleted = (matchState.currentInnings === 1 && matchState.innings1Completed) || 
+                        (matchState.currentInnings === 2 && matchState.innings2Completed) ||
+                        (matchState.activeViewTab !== matchState.currentInnings);
+    
+    const subtitle = document.getElementById('partnerships-modal-subtitle');
+    const teamName = matchState.activeViewTab === 1 ? matchState.team1Name : matchState.team2Name;
+    if (subtitle) {
+        subtitle.textContent = `Partnership breakdown for ${teamName}`;
+    }
+    
+    const completedParts = inn.partnerships || [];
+    
+    // Render completed wicket partnerships
+    completedParts.forEach((part, index) => {
+        const item = document.createElement('div');
+        item.className = "partnership-list-item";
+        
+        const ord = getOrdinal(part.wicketNum || (index + 1));
+        
+        item.innerHTML = `
+            <div style="display: flex; align-items: center; gap: 12px;">
+                <span class="partnership-wkt-badge wkt-badge-completed">${ord} Wkt</span>
+                <div style="display: flex; flex-direction: column; gap: 2px;">
+                    <span style="font-weight: 700; font-size: 0.95rem; color: var(--text-main);">${part.bat1} & ${part.bat2}</span>
+                </div>
+            </div>
+            <div style="text-align: right; display: flex; flex-direction: column; align-items: flex-end; gap: 2px;">
+                <span style="font-family: var(--font-heading); font-weight: 800; font-size: 1.15rem; color: var(--color-danger);">${part.runs}</span>
+                <span style="font-size: 0.75rem; color: var(--text-muted); font-weight: 600;">${part.balls} balls</span>
+            </div>
+        `;
+        listContainer.appendChild(item);
+    });
+    
+    // Check if there is an active/unbroken crease partnership
+    const battingSquad = matchState.activeViewTab === 1 ? matchState.squadUs : matchState.squadThem;
+    const maxWickets = battingSquad.length - 1;
+    
+    if (inn.wickets < maxWickets) {
+        const activePart = inn.partnership || { runs: 0, balls: 0 };
+        const bat1Name = inn.players.bat1 ? inn.players.bat1.name : "Batsman 1";
+        const bat2Name = inn.players.bat2 ? inn.players.bat2.name : "Batsman 2";
+        
+        const item = document.createElement('div');
+        item.className = "partnership-list-item active-partnership";
+        
+        const statusLabel = isCompleted ? "Unbroken" : "Active";
+        const badgeClass = isCompleted ? "wkt-badge-completed" : "wkt-badge-active";
+        const runsColor = isCompleted ? "var(--color-gold)" : "var(--color-green)";
+        const runsSuffix = "*"; // asterisk for unbroken/active partnership
+        
+        item.innerHTML = `
+            <div style="display: flex; align-items: center; gap: 12px;">
+                <span class="partnership-wkt-badge ${badgeClass}">${statusLabel}</span>
+                <div style="display: flex; flex-direction: column; gap: 2px;">
+                    <span style="font-weight: 700; font-size: 0.95rem; color: var(--text-main);">${bat1Name} & ${bat2Name}</span>
+                </div>
+            </div>
+            <div style="text-align: right; display: flex; flex-direction: column; align-items: flex-end; gap: 2px;">
+                <span style="font-family: var(--font-heading); font-weight: 800; font-size: 1.15rem; color: ${runsColor};">${activePart.runs}${runsSuffix}</span>
+                <span style="font-size: 0.75rem; color: var(--text-muted); font-weight: 600;">${activePart.balls} balls</span>
+            </div>
+        `;
+        listContainer.appendChild(item);
+    }
+    
+    // If no partnerships exist at all
+    if (completedParts.length === 0 && inn.wickets >= maxWickets) {
+        const emptyMsg = document.createElement('p');
+        emptyMsg.style.color = "var(--text-muted)";
+        emptyMsg.style.fontSize = "0.9rem";
+        emptyMsg.style.padding = "20px 0";
+        emptyMsg.textContent = "No partnerships recorded for this innings.";
+        listContainer.appendChild(emptyMsg);
     }
 }
 

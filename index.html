@@ -13,7 +13,7 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="styles.css">
 </head>
-<body>
+<body data-theme="light">
     <!-- Ambient Glow BG -->
     <div class="glow bg-glow-1"></div>
     <div class="glow bg-glow-2"></div>
@@ -98,8 +98,10 @@
                 <p style="font-size: 0.85rem; color: var(--text-muted); margin-top: 4px;">Manage, review, or reload your previously saved matches</p>
             </div>
             
-            <div class="history-setup-grid" id="history-setup-container">
-                <p class="no-history-text">No matches saved yet.</p>
+            <div class="history-setup-scroll-container">
+                <div class="history-setup-grid" id="history-setup-container">
+                    <p class="no-history-text">No matches saved yet.</p>
+                </div>
             </div>
         </div>
     </div>
@@ -126,7 +128,7 @@
                     <button class="btn btn-secondary btn-sm" onclick="shareMatchToWhatsApp()" style="background: rgba(37,211,102,0.1) !important; border: 1px solid rgba(37,211,102,0.3) !important; color: #25d366 !important; font-size: 0.76rem; padding: 6px 12px; cursor: pointer; border-radius: var(--radius-sm); pointer-events: auto !important; height: 32px;" title="Share Scorecard to WhatsApp">
                         <i class="fa-brands fa-whatsapp" style="font-size: 0.95rem;"></i> Share Score
                     </button>
-                    <button class="btn-theme" onclick="toggleTheme()" aria-label="Toggle theme"><i class="fa-solid fa-moon"></i></button>
+                    <button class="btn-theme" onclick="toggleTheme()" aria-label="Toggle theme"><i class="fa-solid fa-sun"></i></button>
                 </div>
             </header>
 
@@ -189,8 +191,11 @@
             <section class="players-section">
                 <!-- Batsmen stats card -->
                 <div class="card player-card">
-                    <div class="card-header">
+                    <div class="card-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
                         <h3><i class="fa-solid fa-user-pen icon-spacing"></i> Active Batsmen</h3>
+                        <button class="btn btn-secondary btn-sm" id="btn-change-batsman" onclick="openBatsmanSelectionModal()" style="background: transparent !important; border: 1px solid var(--border-color) !important; box-shadow: none !important; color: var(--text-main) !important; padding: 4px 8px; font-size: 0.72rem; border-radius: var(--radius-sm); cursor: pointer;">
+                            <i class="fa-solid fa-arrows-rotate"></i> Change Batsman
+                        </button>
                     </div>
                     <div class="player-stats-table">
                         <div class="table-row table-head batsman-row">
@@ -221,8 +226,8 @@
                         </div>
                     </div>
                     <p class="table-tip"><i class="fa-solid fa-circle-info"></i> Click a batsman's runs to set them on-strike (starred *).</p>
-                    <div id="partnership-wrapper" class="partnership-box" style="margin-top: 12px; display: flex; align-items: center; justify-content: space-between; padding: 10px 14px; background: rgba(255,255,255,0.02); border: 1px solid var(--border-color); border-radius: var(--radius-sm); font-size: 0.85rem; font-weight: 700;">
-                        <span style="color: var(--text-muted);"><i class="fa-solid fa-handshake"></i> Current Partnership:</span>
+                    <div id="partnership-wrapper" class="partnership-box" onclick="openPartnershipsModal()" title="Click to view all partnerships for this innings" style="margin-top: 12px; display: flex; align-items: center; justify-content: space-between; padding: 10px 14px; background: rgba(255,255,255,0.02); border: 1px solid var(--border-color); border-radius: var(--radius-sm); font-size: 0.85rem; font-weight: 700; cursor: pointer; transition: all 0.2s ease;">
+                        <span style="color: var(--text-muted);" id="partnership-label"><i class="fa-solid fa-handshake"></i> Current Partnership:</span>
                         <span style="color: var(--color-green);" id="partnership-display">0 Runs (0 balls)</span>
                     </div>
                 </div>
@@ -469,7 +474,62 @@
         </div>
     </div>
 
+    <!-- Change Batsman Modal -->
+    <div id="change-batsman-modal" class="modal-overlay hidden" onclick="if(event.target === this) closeChangeBatsmanModal();">
+        <div class="modal-card animate-pop" style="max-width: 440px;">
+            <div class="modal-icon" style="background-color: var(--color-blue-glow); border-color: var(--color-blue); color: var(--color-blue);">
+                <i class="fa-solid fa-arrows-rotate"></i>
+            </div>
+            <h2>Change Active Batsman</h2>
+            <p class="helper-text" style="margin-bottom: 20px; color: var(--text-muted);">Select which batsman to replace and who should take their place:</p>
+            
+            <!-- Step 1: Crease Slot Selector -->
+            <div id="change-batsman-slot-selection" style="display: flex; flex-direction: column; gap: 12px; margin-bottom: 20px;">
+                <h4 style="font-size: 0.82rem; color: var(--text-muted); text-transform: uppercase; text-align: left; margin-bottom: 4px;">1. Select Batsman to Replace:</h4>
+                <button class="btn btn-secondary" id="btn-change-slot-bat1" onclick="selectBatsmanSlotToReplace('bat1')" style="text-align: left; padding: 12px 16px; font-weight: 700; width: 100%; display: flex; justify-content: space-between; align-items: center;">
+                    <span>Batsman 1</span>
+                    <span style="font-size: 0.78rem; color: var(--color-blue);" id="lbl-change-slot-bat1-name">Name</span>
+                </button>
+                <button class="btn btn-secondary" id="btn-change-slot-bat2" onclick="selectBatsmanSlotToReplace('bat2')" style="text-align: left; padding: 12px 16px; font-weight: 700; width: 100%; display: flex; justify-content: space-between; align-items: center;">
+                    <span>Batsman 2</span>
+                    <span style="font-size: 0.78rem; color: var(--color-blue);" id="lbl-change-slot-bat2-name">Name</span>
+                </button>
+            </div>
+            
+            <!-- Step 2: Next Batsman Roster List -->
+            <div id="change-batsman-roster-container" class="hidden" style="text-align: left; margin-bottom: 20px;">
+                <h4 style="font-size: 0.82rem; color: var(--text-muted); text-transform: uppercase; margin-bottom: 10px;">2. Select Next Batsman:</h4>
+                <div class="roster-select-list" id="modal-change-batsman-list" style="max-height: 200px;">
+                    <!-- Dynamically populated roster list -->
+                </div>
+            </div>
+            
+            <div class="modal-buttons">
+                <button class="btn btn-secondary" onclick="closeChangeBatsmanModal()" style="width: 100%;">Cancel</button>
+            </div>
+        </div>
+    </div>
 
+    <!-- Partnerships Modal -->
+    <div id="partnerships-modal" class="modal-overlay hidden" onclick="if(event.target === this) closePartnershipsModal();">
+        <div class="modal-card animate-pop" style="max-width: 500px;">
+            <div class="modal-icon" style="background-color: var(--color-green-glow); border-color: var(--color-green); color: var(--color-green);">
+                <i class="fa-solid fa-handshake"></i>
+            </div>
+            <h2 id="partnerships-modal-title">Innings Partnerships</h2>
+            <p class="helper-text" id="partnerships-modal-subtitle" style="margin-bottom: 20px; color: var(--text-muted); text-align: center;">Partnership breakdown</p>
+            
+            <div class="partnerships-list-container" style="width: 100%; max-height: 300px; overflow-y: auto; margin-bottom: 20px;">
+                <div id="partnerships-list" style="display: flex; flex-direction: column; gap: 10px; padding-right: 6px;">
+                    <!-- Dynamically populated partnerships -->
+                </div>
+            </div>
+            
+            <div class="modal-buttons" style="width: 100%;">
+                <button class="btn btn-secondary" onclick="closePartnershipsModal()" style="width: 100%;">Close</button>
+            </div>
+        </div>
+    </div>
 
     <script src="app.js"></script>
 </body>
